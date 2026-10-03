@@ -1,0 +1,109 @@
+#pragma once
+
+#include <QMutex>
+#include <QObject>
+#include <QQmlEngine>
+#include <QStringList>
+#include <QWaitCondition>
+
+#include <atomic>
+#include <functional>
+#include <memory>
+
+class FileOps : public QObject
+{
+    Q_OBJECT
+    QML_ELEMENT
+
+    Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
+    Q_PROPERTY(qreal progress READ progress NOTIFY progressChanged)
+    Q_PROPERTY(QString busyLabel READ busyLabel NOTIFY busyChanged)
+    Q_PROPERTY(bool canPaste READ canPaste NOTIFY canPasteChanged)
+    Q_PROPERTY(bool canUndo READ canUndo NOTIFY undoChanged)
+    Q_PROPERTY(QString undoLabel READ undoLabel NOTIFY undoChanged)
+    Q_PROPERTY(QString trashDir READ trashDir CONSTANT)
+
+public:
+    enum ConflictChoice { Skip = 0, KeepBoth = 1, Replace = 2 };
+    Q_ENUM(ConflictChoice)
+
+    using Pairs = QList<QPair<QString, QString>>; // (origem, destino)
+
+    struct JobState {
+        std::atomic_bool cancel{false};
+        QMutex mutex;
+        QWaitCondition cond;
+        int answer = -1;
+        int applyAll = -1;
+    };
+
+    struct JobResult {
+        QStringList errors;
+        Pairs done;
+        bool canceled = false;
+    };
+
+    explicit FileOps(QObject *parent = nullptr);
+
+    bool busy() const { return m_busy; }
+    qreal progress() const { return m_progress; }
+    QString busyLabel() const { return m_busyLabel; }
+    bool canPaste() const;
+    bool canUndo() const { return !m_undo.isEmpty(); }
+    QString undoLabel() const;
+    QString trashDir() const;
+
+    Q_INVOKABLE QString startPath() const; // argv[1] ou $HOME
+    Q_INVOKABLE void open(const QString &path);
+    Q_INVOKABLE void openTerminal(const QString &dir);
+    Q_INVOKABLE void copy(const QStringList &paths);
+    Q_INVOKABLE void cut(const QStringList &paths);
+    Q_INVOKABLE void paste(const QString &destDir);
+    Q_INVOKABLE void transfer(const QStringList &sources, const QString &destDir, bool move);
+    Q_INVOKABLE void dropUrls(const QList<QUrl> &urls, const QString &destDir);
+    Q_INVOKABLE void trash(const QStringList &paths);
+    Q_INVOKABLE void deletePermanently(const QStringList &paths);
+    Q_INVOKABLE void restoreFromTrash(const QStringList &paths);
+    Q_INVOKABLE void emptyTrash();
+    Q_INVOKABLE QString rename(const QString &path, const QString &newName);
+    Q_INVOKABLE QString createFolder(const QString &parentDir);
+    Q_INVOKABLE void undo();
+    Q_INVOKABLE void cancel();
+    Q_INVOKABLE void resolveConflict(int choice, bool applyToAll);
+
+    Q_INVOKABLE QString uriList(const QStringList &paths) const;
+    Q_INVOKABLE QUrl fileUrl(const QString &path) const;
+    Q_INVOKABLE QString readText(const QString &path, int maxBytes = 65536) const;
+    Q_INVOKABLE QString parentDir(const QString &path) const;
+
+signals:
+    void busyChanged();
+    void progressChanged();
+    void canPasteChanged();
+    void undoChanged();
+    void errorOccurred(const QString &message);
+    void finished(const QString &message);
+    void conflict(const QString &name, const QString &destDir, bool isDir);
+
+private:
+    enum class UndoKind { Copy, Move, Rename, Trash, Mkdir };
+    struct UndoEntry {
+        UndoKind kind;
+        Pairs pairs;
+    };
+    using Job = std::function<JobResult(JobState &, std::function<void(qreal)>)>;
+
+    void setClipboard(const QStringList &paths, bool cut);
+    void runJob(const QString &label, const QString &doneMessage, Job job,
+                std::function<void(const JobResult &)> onDone = {});
+    void pushUndo(UndoKind kind, const Pairs &pairs);
+    int askConflict(JobState &state, const QString &name, const QString &destDir, bool isDir);
+    void setBusy(bool b, const QString &label = {});
+    void setProgress(qreal p);
+
+    std::shared_ptr<JobState> m_job;
+    QList<UndoEntry> m_undo;
+    QString m_busyLabel;
+    bool m_busy = false;
+    qreal m_progress = 0;
+};

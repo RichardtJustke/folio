@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Folio
+GenericName=Gerenciador de arquivos
+Comment=Navegue pelos seus arquivos
+Exec=folio %u
+Icon=system-file-manager
+Terminal=false
+Categories=System;FileTools;FileManager;Utility;Core;Qt;
+MimeType=inode/directory;
+StartupWMClass=folio
+Keywords=arquivos;pastas;files;folders;

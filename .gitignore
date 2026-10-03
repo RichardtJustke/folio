@@ -1,0 +1,8 @@
+build/
+*.user
+.qtcreator/
+.cache/
+compile_commands.json
+pkg/
+src/*.pkg.tar.*
+*.pkg.tar.*
