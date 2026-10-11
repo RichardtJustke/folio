@@ -10,13 +10,15 @@ Item {
     required property FileOps ops
     property var entry: ({})
     property bool shown: false
+    property real originX: 0 // centro da miniatura de origem, relativo ao centro da janela
+    property real originY: 0
 
     readonly property bool hasEntry: entry !== undefined && entry.path !== undefined
 
     anchors.fill: parent
     visible: opacity > 0
     opacity: shown && hasEntry ? 1 : 0
-    Behavior on opacity { NumberAnimation { duration: 140 } }
+    Behavior on opacity { NumberAnimation { duration: Theme.dur(160) } }
 
     Rectangle {
         anchors.fill: parent
@@ -27,14 +29,18 @@ Item {
     Rectangle {
         id: panel
         anchors.centerIn: parent
+        anchors.horizontalCenterOffset: root.shown ? 0 : root.originX
+        anchors.verticalCenterOffset: root.shown ? 0 : root.originY
+        Behavior on anchors.horizontalCenterOffset { NumberAnimation { duration: Theme.dur(260); easing.type: Easing.OutCubic } }
+        Behavior on anchors.verticalCenterOffset { NumberAnimation { duration: Theme.dur(260); easing.type: Easing.OutCubic } }
         width: Math.min(parent.width * 0.75, 960)
         height: Math.min(parent.height * 0.82, 720)
         radius: 14
         color: Theme.menuBg
         border.width: 1
         border.color: Theme.borderStrong
-        scale: root.shown ? 1 : 0.96
-        Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+        scale: root.shown ? 1 : (root.originX === 0 && root.originY === 0 ? 0.96 : 0.25)
+        Behavior on scale { NumberAnimation { duration: Theme.dur(260); easing.type: Easing.OutCubic } }
 
         MouseArea { anchors.fill: parent } // não fecha ao clicar no painel
 

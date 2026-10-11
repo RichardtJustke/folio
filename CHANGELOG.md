@@ -2,6 +2,16 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.4
+- Animações em toda a interface, iguais com a barra lateral completa, compacta ou oculta:
+  - Excluir: os itens voam até a Lixeira (que pulsa); esvaziar a Lixeira solta partículas; exclusão permanente encolhe no lugar.
+  - Itens novos (novo arquivo/pasta, extrair, compactar, colar, renomear) surgem com um "pulo" em cascata; os vizinhos deslizam para o novo lugar.
+  - Trocar de pasta desliza o conteúdo 16 px na direção do movimento; abas abrem/fecham com a pílula crescendo/encolhendo; troca de aba e divisão com crossfade.
+  - Barra lateral recolhe/expande com animação e os rótulos desvanecem; soltar numa pasta da barra faz o item pulsar.
+  - Menus crescem do ponto do clique; diálogos sobem 8 px; Configurações entram com fade; Visualização Rápida cresce a partir da miniatura.
+  - Passar o mouse sobe o item 2 px; seleção com transição suave; erro faz o aviso e os itens tremerem; conectar ao servidor mostra um anel girando.
+- Configurações → Animações: "Reduzir movimento" (desliga tudo) e velocidade de 0,5× a 2×.
+
 ## Alpha 0.3
 - Abas sempre visíveis, com botão "+" de nova aba; cada aba tem a sua própria pasta e histórico.
 - Divisão da janela: duas abas lado a lado (botão na tira de abas, `Ctrl+\` ou `F6`); divisor arrastável (duplo clique = 50/50); em janela estreita os painéis ficam um sobre o outro.

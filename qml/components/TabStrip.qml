@@ -19,6 +19,13 @@ Item {
 
     height: 34
 
+    // fecha com animação (a pílula encolhe e as vizinhas deslizam); com uma aba só, fecha na hora
+    function requestClose(i) {
+        const it = tabRepeater.itemAt(i)
+        if (it && root.tabs.count > 1) it.startClose()
+        else root.closed(i)
+    }
+
     readonly property int buttonsWidth: 2 * 30 + 6
     readonly property real tabWidth: Math.max(60, Math.min(200,
         (width - 28 - buttonsWidth - tabs.count * 6) / Math.max(1, tabs.count)))
@@ -29,6 +36,7 @@ Item {
         spacing: 6
 
         Repeater {
+            id: tabRepeater
             model: root.tabs
             delegate: Rectangle {
                 id: tab
@@ -37,7 +45,17 @@ Item {
                 readonly property bool current: index === root.currentIndex
                 readonly property bool inSplit: root.splitActive && (index === root.splitLeft || index === root.splitRight)
 
-                width: root.tabWidth
+                property bool shown: false
+                property bool closing: false
+                function startClose() { closing = true; closeTimer.start() }
+                Timer { id: closeTimer; interval: Theme.dur(190); onTriggered: root.closed(tab.index) }
+                Component.onCompleted: shown = true
+
+                width: shown && !closing ? root.tabWidth : 0
+                Behavior on width { NumberAnimation { duration: Theme.dur(200); easing.type: Easing.OutCubic } }
+                opacity: shown && !closing ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: Theme.dur(160) } }
+                clip: true
                 height: 28
                 radius: 14
                 color: drop.containsDrag ? Theme.accentGlow
@@ -60,7 +78,7 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     acceptedButtons: Qt.LeftButton | Qt.MiddleButton
-                    onClicked: e => e.button === Qt.MiddleButton ? root.closed(tab.index) : root.selected(tab.index)
+                    onClicked: e => e.button === Qt.MiddleButton ? root.requestClose(tab.index) : root.selected(tab.index)
                 }
 
                 Rectangle { // fechar
@@ -74,7 +92,7 @@ Item {
                         sourceSize: Qt.size(20, 20)
                         source: Theme.icon("window-close-symbolic", Theme.textDim)
                     }
-                    MouseArea { id: closeArea; anchors.fill: parent; hoverEnabled: true; onClicked: root.closed(tab.index) }
+                    MouseArea { id: closeArea; anchors.fill: parent; hoverEnabled: true; onClicked: root.requestClose(tab.index) }
                 }
 
                 DropArea {

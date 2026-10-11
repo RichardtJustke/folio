@@ -107,7 +107,9 @@ Item {
         spacing: 6
 
         Row { // progresso + cancelar
-            visible: root.ops.busy
+            opacity: root.ops.busy ? 1 : 0
+            visible: opacity > 0
+            Behavior on opacity { NumberAnimation { duration: Theme.dur(180) } }
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
             Text {

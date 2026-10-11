@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
-project(folio VERSION 0.3.0 LANGUAGES CXX)
-set(FOLIO_VERSION_STRING "0.3")
+project(folio VERSION 0.4.0 LANGUAGES CXX)
+set(FOLIO_VERSION_STRING "0.4")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -64,6 +64,8 @@ qt_add_qml_module(folio
         qml/components/ConfirmDialog.qml
         qml/components/ConflictDialog.qml
         qml/components/RenameField.qml
+        qml/components/Ghost.qml
+        qml/components/FxLayer.qml
     RESOURCES
         assets/folder.svg
         assets/folio.svg

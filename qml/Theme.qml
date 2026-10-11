@@ -51,6 +51,10 @@ QtObject {
     readonly property int sectionHeaderHeight: 40
     readonly property string folderSvg: "qrc:/qt/qml/Folio/assets/folder.svg"
 
+    // animações: duração em ms já ajustada à velocidade escolhida; 0 com "reduzir movimento"
+    readonly property bool motion: !Settings.reduceMotion
+    function dur(ms) { return Settings.reduceMotion ? 0 : Math.round(ms / Settings.animationSpeed) }
+
     function sizeLabel(bytes) {
         const units = ["bytes", "KB", "MB", "GB", "TB"]
         let i = 0, v = bytes

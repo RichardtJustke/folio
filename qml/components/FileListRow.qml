@@ -22,12 +22,14 @@ Item {
              : root.entry.index % 2 ? Theme.overlay(0.025) : "transparent"
         border.width: interaction.dropHover ? 1.5 : 0
         border.color: Theme.accent
+        Behavior on color { ColorAnimation { duration: Theme.dur(120) } }
     }
 
     Row {
         anchors.fill: parent
         anchors.leftMargin: 8
-        opacity: root.entry.isHidden ? 0.55 : 1
+        opacity: interaction.dragging ? 0.4 : root.entry.isHidden ? 0.55 : 1
+        Behavior on opacity { NumberAnimation { duration: Theme.dur(120) } }
 
         Item {
             width: root.view.nameWidth - 8

@@ -13,10 +13,12 @@ Item {
 
     Column {
         anchors.horizontalCenter: parent.horizontalCenter
-        y: 6
+        y: interaction.hovered && !root.selected ? 4 : 6 // sobe 2px ao passar o mouse
+        Behavior on y { NumberAnimation { duration: Theme.dur(120); easing.type: Easing.OutQuad } }
         width: parent.width - 8
         spacing: 4
-        opacity: root.entry.isHidden ? 0.55 : 1
+        opacity: interaction.dragging ? 0.4 : root.entry.isHidden ? 0.55 : 1
+        Behavior on opacity { NumberAnimation { duration: Theme.dur(120) } }
 
         Rectangle { // destaque atrás do ícone
             anchors.horizontalCenter: parent.horizontalCenter
@@ -27,6 +29,7 @@ Item {
                  : interaction.hovered ? Theme.overlay(0.03) : "transparent"
             border.width: interaction.dropHover ? 1.5 : 0
             border.color: Theme.accent
+            Behavior on color { ColorAnimation { duration: Theme.dur(120) } }
 
             FolderIcon {
                 visible: root.entry.isDir
@@ -84,6 +87,7 @@ Item {
                 height: name.height + 2
                 radius: 4
                 color: root.selected ? Theme.accentSoft : "transparent"
+                Behavior on color { ColorAnimation { duration: Theme.dur(120) } }
 
                 Text {
                     id: name

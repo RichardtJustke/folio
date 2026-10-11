@@ -106,7 +106,7 @@ Rectangle {
             width: 18; height: 18; radius: 9
             y: 3; x: tg.on ? 19 : 3
             color: "white"
-            Behavior on x { NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
+            Behavior on x { NumberAnimation { duration: Theme.dur(110); easing.type: Easing.OutCubic } }
         }
         MouseArea { anchors.fill: parent; onClicked: tg.toggled(!tg.on) }
     }
@@ -265,6 +265,23 @@ Rectangle {
                 label: "Melhorar legibilidade"
                 hint: "Com transparência: reforça o contraste dos textos e escurece/clareia o fundo da área de arquivos"
                 Toggle { on: Settings.legibility; onToggled: v => Settings.legibility = v }
+            }
+
+            SectionTitle { text: "Animações" }
+            Line {
+                label: "Reduzir movimento"
+                hint: "Desliga todas as animações (itens voando, deslizes, transições)"
+                Toggle { on: Settings.reduceMotion; onToggled: v => Settings.reduceMotion = v }
+            }
+            Line {
+                label: "Velocidade das animações"
+                hint: Settings.animationSpeed.toFixed(1) + "× — maior = mais rápido"
+                Stepper {
+                    from: 0.5; to: 2; stepSize: 0.1
+                    value: Settings.animationSpeed
+                    enabled: !Settings.reduceMotion
+                    onMoved: Settings.animationSpeed = Math.round(value * 10) / 10
+                }
             }
 
             SectionTitle { text: "Janela e layout" }

@@ -135,7 +135,7 @@ Window {
     // ── serviços compartilhados ──
     FileOps {
         id: fileOps
-        onErrorOccurred: msg => toast.show(msg, true)
+        onErrorOccurred: msg => { toast.show(msg, true); toast.shake(); if (win.tab && win.fm) win.tab.view.shake(win.fm.selectedPaths()) }
         onFinished: msg => toast.show(msg)
         onConflict: (name, dir, isDir) => conflictDialog.ask(name, dir, isDir)
         onServerConnected: path => { connectDialog.close(); nav.go(path) }
@@ -146,19 +146,54 @@ Window {
         onErrorOccurred: msg => toast.show(msg || "Falha ao ejetar", true)
     }
 
+    // para onde voam os itens que vão para a Lixeira (o ícone dela na barra; canto da janela se a barra estiver oculta)
+    function trashTarget() {
+        const t = sidebar.targetFor(fileOps.trashDir)
+        return t ? t : Qt.point(28, win.height - 28)
+    }
+
+    function animateToTrash(paths) {
+        if (!Theme.motion || !tab) return
+        const items = tab.view.ghostItems(paths)
+        if (items.length === 0) return
+        const t = trashTarget()
+        fx.fly(items, t.x, t.y, () => sidebar.pulse(fileOps.trashDir))
+    }
+
+    function animateVanish(paths) {
+        if (!Theme.motion || !tab) return
+        fx.shrink(tab.view.ghostItems(paths))
+    }
+
     function requestDelete(paths, permanent) {
         if (paths.length === 0) return
-        if (!permanent && !fm.isTrash) { fileOps.trash(paths); return }
-        if (!Settings.confirmTrash) { fileOps.deletePermanently(paths); return }
+        if (!permanent && !fm.isTrash) { animateToTrash(paths); fileOps.trash(paths); return }
+        if (!Settings.confirmTrash) { animateVanish(paths); fileOps.deletePermanently(paths); return }
         const what = paths.length === 1 ? "“" + paths[0].split("/").pop() + "”" : paths.length + " itens"
         confirmDialog.ask("Excluir " + what + " permanentemente?",
                           "Esta ação não pode ser desfeita.", "Excluir",
-                          () => fileOps.deletePermanently(paths))
+                          () => { animateVanish(paths); fileOps.deletePermanently(paths) })
     }
 
     function requestEmptyTrash() {
         confirmDialog.ask("Esvaziar a Lixeira?", "Todos os itens da Lixeira serão excluídos permanentemente.",
-                          "Esvaziar", () => fileOps.emptyTrash())
+                          "Esvaziar", () => {
+                              if (tab && fm.isTrash) animateVanish(tab.view.visiblePaths())
+                              const t = trashTarget()
+                              fx.burst(t.x, t.y)
+                              sidebar.pulse(fileOps.trashDir)
+                              fileOps.emptyTrash()
+                          })
+    }
+
+    // Visualização Rápida cresce a partir da miniatura do item atual
+    function openQuickLook() {
+        if (!quickLook.shown && tab && fm && fm.currentIndex >= 0) {
+            const g = tab.view.ghostItems([fm.entry(fm.currentIndex).path])
+            if (g.length) { quickLook.originX = g[0].x - win.width / 2; quickLook.originY = g[0].y - win.height / 2 }
+            else { quickLook.originX = 0; quickLook.originY = 0 }
+        }
+        quickLook.shown = true
     }
 
     Rectangle {
@@ -174,7 +209,9 @@ Window {
             anchors { left: parent.left; top: parent.top; bottom: parent.bottom; margins: 8 }
             width: win.sidebarState === "full" ? Theme.sidebarWidth
                  : win.sidebarState === "compact" ? Theme.sidebarCompactWidth : 0
-            visible: win.sidebarState !== "hidden"
+            visible: width > 0.5
+            clip: true
+            Behavior on width { NumberAnimation { duration: Theme.dur(260); easing.type: Easing.OutCubic } }
             compact: win.sidebarState === "compact"
             onOpenSettings: win.settingsOpen = !win.settingsOpen
             onTopClicked: win.topClick()
@@ -196,6 +233,7 @@ Window {
             onDropOnPlace: (d, path) => {
                 if (!d.hasUrls) return
                 fileOps.dropUrls(d.urls, path)
+                sidebar.pulse(path)
                 d.accept(Qt.CopyAction)
             }
         }
@@ -250,7 +288,9 @@ Window {
 
         Item { // painéis: uma aba, ou duas lado a lado (divisão)
             id: paneArea
-            visible: !win.settingsOpen // com Configurações aberta, a vista de arquivos some (não vaza por trás do vidro)
+            opacity: win.settingsOpen ? 0 : 1 // com Configurações aberta, a vista de arquivos some (não vaza por trás do vidro)
+            visible: opacity > 0
+            Behavior on opacity { NumberAnimation { duration: Theme.dur(200) } }
             anchors {
                 left: sidebar.right; right: parent.right; top: tabStrip.bottom; bottom: parent.bottom
                 leftMargin: 4; rightMargin: win.split ? 6 : 0; bottomMargin: win.split ? 6 : 0
@@ -268,7 +308,15 @@ Window {
                 BrowserTab {
                     id: pane
                     readonly property bool isRight: win.split && index === win.splitRight
-                    visible: win.split ? (index === win.splitLeft || isRight) : index === win.currentTab
+                    readonly property bool shown: win.split ? (index === win.splitLeft || isRight) : index === win.currentTab
+                    opacity: shown ? 1 : 0
+                    visible: opacity > 0
+                    enabled: shown
+                    z: index === win.currentTab ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: Theme.dur(200); easing.type: Easing.OutCubic } }
+                    transform: Translate {
+                        x: pane.isRight ? (1 - pane.opacity) * 24 : 0 // o segundo painel desliza da borda
+                    }
                     x: isRight && !paneArea.vertical ? paneArea.firstSize + paneArea.gap : 0
                     y: isRight && paneArea.vertical ? paneArea.firstSize + paneArea.gap : 0
                     width: win.split && !paneArea.vertical
@@ -283,7 +331,7 @@ Window {
                     onTitleUpdated: (i, title) => { if (i < tabs.count) tabs.setProperty(i, "title", title) }
                     onRequestDelete: (paths, permanent) => win.requestDelete(paths, permanent)
                     onRequestEmptyTrash: win.requestEmptyTrash()
-                    onQuickLook: quickLook.shown = true
+                    onQuickLook: win.openQuickLook()
                     onShowProperties: paths => win.showProperties(paths)
                     onOpenWith: path => openWithDialog.show(path)
                     onPromptSelectPattern: win.promptSelectPattern()
@@ -339,11 +387,16 @@ Window {
         SettingsPage {
             id: settingsPage
             ops: fileOps
-            visible: win.settingsOpen
+            opacity: win.settingsOpen ? 1 : 0
+            visible: opacity > 0
+            Behavior on opacity { NumberAnimation { duration: Theme.dur(240); easing.type: Easing.OutCubic } }
+            transform: Translate { y: (1 - settingsPage.opacity) * 10 }
             anchors { left: sidebar.right; right: parent.right; top: tabStrip.bottom; bottom: parent.bottom; margins: 6; leftMargin: 4; topMargin: 2 }
             onClosed: win.settingsOpen = false
         }
     }
+
+    FxLayer { id: fx; z: 60 }
 
     QuickLook {
         id: quickLook
@@ -378,7 +431,7 @@ Window {
         enabled: win.ready && fm.selectedCount === 1 && !fm.isTrash
         onActivated: fm.renamingPath = fm.selectedPaths()[0]
     }
-    Shortcut { sequence: "Space"; enabled: win.ready; onActivated: quickLook.shown = !quickLook.shown }
+    Shortcut { sequence: "Space"; enabled: win.ready; onActivated: quickLook.shown ? quickLook.shown = false : win.openQuickLook() }
     Shortcut { sequence: "Escape"; enabled: quickLook.shown; onActivated: quickLook.shown = false }
     Shortcut { sequences: ["Alt+Left", "Backspace"]; enabled: win.ready; onActivated: nav.back() }
     Shortcut { sequence: "Alt+Right"; enabled: win.ready; onActivated: nav.forward() }
@@ -407,7 +460,7 @@ Window {
     Shortcut { sequence: "Ctrl+1"; enabled: win.ready; onActivated: fm.viewMode = "grid" }
     Shortcut { sequence: "Ctrl+2"; enabled: win.ready; onActivated: fm.viewMode = "list" }
     Shortcut { sequence: "Ctrl+T"; onActivated: win.newTab(fm ? fm.path : fileOps.startPath()) }
-    Shortcut { sequence: "Ctrl+W"; onActivated: win.closeTab(win.currentTab) }
+    Shortcut { sequence: "Ctrl+W"; onActivated: tabStrip.requestClose(win.currentTab) }
     Shortcut { sequences: ["Ctrl+\\", "F6"]; onActivated: win.toggleSplit() }
     Shortcut { sequence: "Ctrl+Tab"; enabled: tabs.count > 1; onActivated: win.selectTab((win.currentTab + 1) % tabs.count) }
     Shortcut {

@@ -91,6 +91,8 @@ public:
     Q_INVOKABLE void updateRubberBand(qreal x1, qreal y1, qreal x2, qreal y2,
                                       qreal headerHeight, qreal rowHeight, qreal cellWidth);
     Q_INVOKABLE void reload();
+    // posição (0, 1, …) do item que acabou de aparecer na pasta (novo/extraído/colado); -1 se não é novo
+    Q_INVOKABLE int freshIndex(const QString &path) const { return m_fresh.value(path, -1); }
 
 signals:
     void pathChanged();
@@ -126,6 +128,10 @@ private:
     QString m_viewMode = QStringLiteral("grid");
     QString m_query;
     QFileSystemWatcher m_watcher;
+    QTimer m_freshTimer;
+    QHash<QString, int> m_fresh;
+    QSet<QString> m_known;
+    QString m_knownDir;
     QTimer m_debounce;
     QTimer m_searchDebounce;
     std::shared_ptr<std::atomic_bool> m_cancel;

@@ -17,6 +17,25 @@ Rectangle {
     signal navigate(string path)
     signal dropOnPlace(var drop, string path)
 
+    // centro do ícone de um lugar, em coordenadas da janela (null se a barra estiver oculta/fora da vista)
+    function targetFor(path) {
+        const it = placeItem(path)
+        if (!it || !root.visible) return null
+        return it.mapToItem(null, root.compact ? it.width / 2 : 26, it.height / 2)
+    }
+
+    function pulse(path) {
+        const it = placeItem(path)
+        if (it) it.pulse()
+    }
+
+    function placeItem(path) {
+        const kids = list.contentItem.children
+        for (let i = 0; i < kids.length; i++)
+            if (kids[i].placePath === path) return kids[i]
+        return null
+    }
+
     radius: Theme.radius - 4
     color: Theme.sidebarBg
     border.width: 1
@@ -112,6 +131,7 @@ Rectangle {
 
             width: ListView.view.width
             compact: root.compact
+            placePath: model.path
             name: model.name
             icon: model.icon
             ejectable: model.ejectable

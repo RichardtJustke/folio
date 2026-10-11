@@ -11,8 +11,66 @@ Item {
 
     readonly property bool hovered: mouse.containsMouse
     readonly property bool dropHover: drop.containsDrag
+    readonly property bool dragging: mouse.drag.active // o item arrastado fica esmaecido
 
     anchors.fill: parent
+
+    // ── efeitos no item (o pai: FileTile / FileListRow) ──
+    property real slideX: 0
+    property real slideY: 0
+    property real shakeX: 0
+    Translate { id: fxShift; x: root.slideX + root.shakeX; y: root.slideY }
+
+    // vizinhos deslizam para o novo lugar quando algo some ou muda de ordem
+    function slideFrom(dx, dy) {
+        if (!Theme.motion) return
+        slideX = dx
+        slideY = dy
+        slideAnim.restart()
+    }
+    ParallelAnimation {
+        id: slideAnim
+        NumberAnimation { target: root; property: "slideX"; to: 0; duration: Theme.dur(320); easing.type: Easing.OutCubic }
+        NumberAnimation { target: root; property: "slideY"; to: 0; duration: Theme.dur(320); easing.type: Easing.OutCubic }
+    }
+
+    // item novo (criado, extraído, colado): cresce com leve "mola", em cascata
+    function pop(order) {
+        if (!Theme.motion || !parent) return
+        popAnim.delay = Math.min(order, 8) * 60
+        popAnim.restart()
+    }
+    SequentialAnimation {
+        id: popAnim
+        property int delay: 0
+        ScriptAction { script: { root.parent.scale = 0.6; root.parent.opacity = 0 } }
+        PauseAnimation { duration: Theme.dur(popAnim.delay) }
+        ParallelAnimation {
+            NumberAnimation { target: root.parent; property: "opacity"; to: 1; duration: Theme.dur(160) }
+            SequentialAnimation {
+                NumberAnimation { target: root.parent; property: "scale"; to: 1.06; duration: Theme.dur(230); easing.type: Easing.OutCubic }
+                NumberAnimation { target: root.parent; property: "scale"; to: 1; duration: Theme.dur(150); easing.type: Easing.InOutQuad }
+            }
+        }
+    }
+
+    function shake() {
+        if (!Theme.motion) return
+        shakeAnim.restart()
+    }
+    SequentialAnimation {
+        id: shakeAnim
+        NumberAnimation { target: root; property: "shakeX"; to: -7; duration: Theme.dur(60) }
+        NumberAnimation { target: root; property: "shakeX"; to: 7; duration: Theme.dur(90) }
+        NumberAnimation { target: root; property: "shakeX"; to: -4; duration: Theme.dur(80) }
+        NumberAnimation { target: root; property: "shakeX"; to: 0; duration: Theme.dur(60) }
+    }
+
+    Component.onCompleted: {
+        parent.transform = fxShift
+        view.registerTile(root)
+    }
+    Component.onDestruction: if (view) view.unregisterTile(root)
 
     MouseArea {
         id: mouse

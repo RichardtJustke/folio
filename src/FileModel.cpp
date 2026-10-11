@@ -196,6 +196,9 @@ FileModel::FileModel(QObject *parent) : QObject(parent), m_cancel(std::make_shar
     m_searchDebounce.setInterval(250);
     connect(&m_searchDebounce, &QTimer::timeout, this, &FileModel::reload);
     connect(&m_watcher, &QFileSystemWatcher::directoryChanged, this, [this] { m_debounce.start(); });
+    m_freshTimer.setSingleShot(true);
+    m_freshTimer.setInterval(1500);
+    connect(&m_freshTimer, &QTimer::timeout, this, [this] { m_fresh.clear(); });
 }
 
 FileModel::~FileModel()
@@ -374,6 +377,23 @@ void FileModel::applyEntries(QList<FileEntry> entries, const QString &error, qui
         return; // resultado obsoleto
     m_loading = false;
     emit loadingChanged();
+
+    // itens que surgiram numa pasta já listada (para animar a entrada); busca e primeira listagem não contam
+    m_fresh.clear();
+    QSet<QString> now;
+    for (const auto &e : std::as_const(entries))
+        now.insert(e.path);
+    if (m_knownDir == m_path && m_query.isEmpty()) {
+        int n = 0;
+        for (const auto &e : std::as_const(entries))
+            if (!m_known.contains(e.path) && n < 24)
+                m_fresh.insert(e.path, n++);
+    }
+    m_known = now;
+    m_knownDir = m_query.isEmpty() ? m_path : QString();
+    if (!m_fresh.isEmpty())
+        m_freshTimer.start();
+
     m_all = std::move(entries);
     m_error = error;
     refilter();

@@ -26,6 +26,8 @@ class Settings : public QObject
     Q_PROPERTY(QString iconTheme READ iconTheme WRITE setIconTheme NOTIFY changed)
     Q_PROPERTY(int iconRevision READ iconRevision NOTIFY changed)
     Q_PROPERTY(bool legibility READ legibility WRITE setLegibility NOTIFY changed)
+    Q_PROPERTY(bool reduceMotion READ reduceMotion WRITE setReduceMotion NOTIFY changed)
+    Q_PROPERTY(qreal animationSpeed READ animationSpeed WRITE setAnimationSpeed NOTIFY changed) // 0.5 – 2.0
     Q_PROPERTY(QString terminal READ terminal WRITE setTerminal NOTIFY changed)
     Q_PROPERTY(QString home READ home CONSTANT)
     Q_PROPERTY(QString version READ version CONSTANT)
@@ -51,6 +53,8 @@ public:
     QString iconTheme() const { return m_iconTheme; }
     int iconRevision() const { return m_iconRevision; }
     bool legibility() const { return m_legibility; }
+    bool reduceMotion() const { return m_reduceMotion; }
+    qreal animationSpeed() const { return m_animSpeed; }
     QString home() const;
     QString version() const;
     QString stage() const { return QStringLiteral("alpha"); }
@@ -71,6 +75,8 @@ public:
     void setFontFamily(const QString &v);
     void setIconTheme(const QString &v);
     void setLegibility(bool v);
+    void setReduceMotion(bool v);
+    void setAnimationSpeed(qreal v);
 
     Q_INVOKABLE QStringList availableIconThemes() const;
     Q_INVOKABLE QStringList availableFonts() const;
@@ -102,4 +108,6 @@ private:
     QString m_iconTheme;
     int m_iconRevision = 0;
     bool m_legibility = true;
+    bool m_reduceMotion = false;
+    qreal m_animSpeed = 1.0;
 };

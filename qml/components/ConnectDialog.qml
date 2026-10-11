@@ -74,11 +74,30 @@ GlassPopup {
             }
         }
 
-        Text {
+        Row {
             visible: root.ops.busy
-            text: root.ops.busyLabel + "…"
-            color: Theme.textDim
-            font.pixelSize: 12
+            spacing: 8
+            Rectangle { // anel girando enquanto conecta
+                width: 16; height: 16; radius: 8
+                color: "transparent"
+                border.width: 2
+                border.color: Theme.border
+                Rectangle {
+                    width: 16; height: 16; radius: 8
+                    color: "transparent"
+                    border.width: 2
+                    border.color: "transparent"
+                    clip: true
+                    Rectangle { width: 8; height: 8; x: 8; y: 0; color: "transparent"; border.width: 2; border.color: Theme.accent; radius: 8 }
+                    RotationAnimator on rotation { from: 0; to: 360; duration: Theme.dur(800); loops: Animation.Infinite; running: root.ops.busy && Theme.motion }
+                }
+            }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: root.ops.busyLabel + "…"
+                color: Theme.textDim
+                font.pixelSize: 12
+            }
         }
 
         Row {

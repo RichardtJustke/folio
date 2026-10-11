@@ -6,6 +6,21 @@ Rectangle {
 
     property bool isError: false
 
+    property real shakeX: 0
+    transform: Translate { x: root.shakeX; y: (1 - root.opacity) * 14 }
+
+    function shake() {
+        if (!Theme.motion) return
+        shakeAnim.restart()
+    }
+    SequentialAnimation {
+        id: shakeAnim
+        NumberAnimation { target: root; property: "shakeX"; to: -7; duration: Theme.dur(60) }
+        NumberAnimation { target: root; property: "shakeX"; to: 7; duration: Theme.dur(90) }
+        NumberAnimation { target: root; property: "shakeX"; to: -4; duration: Theme.dur(80) }
+        NumberAnimation { target: root; property: "shakeX"; to: 0; duration: Theme.dur(60) }
+    }
+
     function show(message, error) {
         label.text = message
         isError = !!error
@@ -24,7 +39,7 @@ Rectangle {
     border.color: isError ? Theme.danger : Theme.borderStrong
     opacity: 0
     visible: opacity > 0
-    Behavior on opacity { NumberAnimation { duration: 180 } }
+    Behavior on opacity { NumberAnimation { duration: Theme.dur(220); easing.type: Easing.OutCubic } }
 
     Text {
         id: label

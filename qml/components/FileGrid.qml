@@ -42,6 +42,101 @@ Item {
 
     function openItemMenu() { itemMenu.popup() }
 
+    // ── animações dos itens ──
+    // posições dos itens destruídos na última reconstrução da lista (path → {x, y, t}), para os vizinhos deslizarem
+    property var lastPos: ({})
+    property var liveTiles: ({}) // path → FileInteraction vivo
+    property bool settled: false // só anima depois que a pasta terminou de carregar
+
+    function registerTile(fx) {
+        liveTiles[fx.entry.path] = fx
+        Qt.callLater(settleTile, fx)
+    }
+
+    function unregisterTile(fx) {
+        try {
+            const path = fx.entry.path
+            if (liveTiles[path] === fx) delete liveTiles[path]
+            if (fx.parent && list.contentItem) {
+                const p = fx.mapToItem(list.contentItem, 0, 0)
+                lastPos[path] = { x: p.x, y: p.y, t: Date.now() }
+            }
+        } catch (e) {}
+    }
+
+    function settleTile(fx) {
+        if (!fx || !fx.parent || !root.settled || fileModel.searchQuery !== "") return
+        const path = fx.entry.path
+        const p = fx.mapToItem(list.contentItem, 0, 0)
+        const old = lastPos[path]
+        if (old && Date.now() - old.t < 500) {
+            const dx = old.x - p.x, dy = old.y - p.y
+            if (Math.abs(dx) > 2 || Math.abs(dy) > 2) fx.slideFrom(dx, dy)
+            return
+        }
+        const order = fileModel.freshIndex(path)
+        if (order >= 0) fx.pop(order)
+    }
+
+    // centro (em coordenadas da janela) e entrada de cada caminho visível — origem das animações de voo
+    function ghostItems(paths) {
+        const out = []
+        for (const p of paths) {
+            const fx = liveTiles[p]
+            if (!fx || !fx.parent) continue
+            const c = fx.mapToItem(null, fx.width / 2, root.listMode ? fx.height / 2 : Theme.iconSize / 2 + 12)
+            out.push({ entry: fx.entry, x: c.x, y: c.y, size: root.listMode ? 22 : Theme.iconSize })
+        }
+        return out
+    }
+
+    function visiblePaths() { return Object.keys(liveTiles) }
+
+    function shake(paths) {
+        for (const p of paths) { const fx = liveTiles[p]; if (fx) fx.shake() }
+    }
+
+    // ── troca de pasta: o conteúdo desliza 16px na direção do movimento ──
+    property string prevPath: ""
+    property int navDir: 0
+    property bool navPending: false
+    Translate { id: navShift }
+    ParallelAnimation {
+        id: navAnim
+        NumberAnimation { target: navShift; property: "x"; to: 0; duration: Theme.dur(220); easing.type: Easing.OutCubic }
+        NumberAnimation { target: list; property: "opacity"; to: 1; duration: Theme.dur(220); easing.type: Easing.OutCubic }
+    }
+    Timer {
+        id: settleTimer
+        interval: 280
+        onTriggered: root.settled = true
+    }
+    Connections {
+        target: root.fileModel
+        function onEntriesChanged() {
+            if (root.navPending) {
+                root.navPending = false
+                if (Theme.motion) {
+                    navShift.x = 16 * root.navDir
+                    list.opacity = 0
+                    navAnim.restart()
+                }
+            }
+            if (!root.settled) settleTimer.restart()
+        }
+        function onPathChanged() {
+            const np = root.fileModel.path
+            root.navDir = np.startsWith(root.prevPath + "/") ? 1 : root.prevPath.startsWith(np + "/") ? -1 : 0
+            root.prevPath = np
+            root.settled = false
+            root.lastPos = ({})
+            root.navPending = true
+        }
+        function onColumnsChanged() { root.settled = false; settleTimer.restart() }
+        function onViewModeChanged() { root.settled = false; root.lastPos = ({}); settleTimer.restart() }
+    }
+    Component.onCompleted: prevPath = fileModel.path
+
     function handleDrop(drop, dest) {
         if (!drop.hasUrls) return
         ops.dropUrls(drop.urls, dest)
@@ -120,6 +215,7 @@ Item {
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         reuseItems: true
+        transform: navShift
         cacheBuffer: 600
         model: root.fileModel.rows
         topMargin: 4
