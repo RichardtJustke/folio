@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
-project(folio VERSION 0.5.0 LANGUAGES CXX)
-set(FOLIO_VERSION_STRING "0.5")
+project(folio VERSION 0.6.0 LANGUAGES CXX)
+set(FOLIO_VERSION_STRING "0.6")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -16,6 +16,9 @@ qt_add_executable(folio
 )
 
 set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+
+file(GLOB FOLIO_ICONS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/assets/icons/*.svg)
+list(TRANSFORM FOLIO_ICONS REPLACE "^${CMAKE_CURRENT_SOURCE_DIR}/" "")
 
 qt_add_qml_module(folio
     URI Folio
@@ -69,6 +72,7 @@ qt_add_qml_module(folio
     RESOURCES
         assets/folder.svg
         assets/folio.svg
+        ${FOLIO_ICONS}
 )
 
 target_include_directories(folio PRIVATE src)

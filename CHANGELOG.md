@@ -2,6 +2,9 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.6
+- Pacote de ícones embutido (`assets/icons`, 40+ SVGs no estilo da logo): barra lateral, barra de ferramentas, menus e ícones genéricos de arquivo ficam iguais em qualquer sistema/AppImage, sem depender do tema de ícones instalado. O tema do sistema continua valendo para ícones específicos de tipos de arquivo.
+
 ## Alpha 0.5
 - Nova logo: pasta azul com aba de vidro fosco e duas folhas saindo (a da frente com canto dobrado) (`assets/folio.svg`), substituindo a folha genérica.
 
