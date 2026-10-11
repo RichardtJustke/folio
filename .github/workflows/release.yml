@@ -28,7 +28,7 @@ jobs:
       - name: Qt 6
         uses: jurplel/install-qt-action@v4
         with:
-          version: "6.6.3"
+          version: "6.8.3"
           arch: linux_gcc_64
           cache: true
 
