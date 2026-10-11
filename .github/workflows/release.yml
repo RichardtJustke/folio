@@ -56,13 +56,13 @@ jobs:
           ./linuxdeploy-x86_64.AppImage --appdir AppDir --desktop-file "$DESKTOP" --plugin qt
           # o plugin do Qt não leva a integração com o compositor Wayland: copia à mão
           ls "$QT_ROOT_DIR/plugins" | tr '\n' ' '; echo
-          for d in wayland-shell-integration wayland-graphic-integration-client wayland-decoration-client; do
+          for d in wayland-shell-integration wayland-graphics-integration-client wayland-decoration-client; do
             cp -r "$QT_ROOT_DIR/plugins/$d" AppDir/usr/plugins/
           done
           ./linuxdeploy-x86_64.AppImage --appdir AppDir --desktop-file "$DESKTOP" --output appimage
           ls -la *.AppImage
           # o app precisa dos plugins do Wayland dentro do pacote
-          for d in wayland-shell-integration wayland-graphic-integration-client wayland-decoration-client; do
+          for d in wayland-shell-integration wayland-graphics-integration-client wayland-decoration-client; do
             test -d "AppDir/usr/plugins/$d" || { echo "faltou o plugin $d"; exit 1; }
           done
           # teste de fumaça: QML carrega e o app fica de pé por 5 s (offscreen, sem display)
