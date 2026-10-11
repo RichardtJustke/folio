@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import Folio
 
 Item {
@@ -8,6 +9,7 @@ Item {
     property string icon
     property bool selected: false
     property bool ejectable: false
+    property bool compact: false
 
     signal clicked
     signal rightClicked(real x, real y)
@@ -21,7 +23,7 @@ Item {
         anchors.leftMargin: 8
         anchors.rightMargin: 8
         radius: height / 2
-        color: drop.containsDrag ? Qt.rgba(0.04, 0.52, 1, 0.25)
+        color: drop.containsDrag ? Theme.accentGlow
              : root.selected ? Theme.selected : mouse.containsMouse ? Theme.hover : "transparent"
         border.width: root.selected || drop.containsDrag ? 1 : 0
         border.color: drop.containsDrag ? Theme.accent : Theme.border
@@ -30,7 +32,7 @@ Item {
 
     Row {
         anchors.left: parent.left
-        anchors.leftMargin: 18
+        anchors.leftMargin: root.compact ? (parent.width - 16) / 2 : 18
         anchors.right: eject.left
         anchors.verticalCenter: parent.verticalCenter
         spacing: 8
@@ -42,6 +44,7 @@ Item {
             source: Theme.icon(root.icon + ",folder-symbolic", Theme.sidebarIcon)
         }
         Text {
+            visible: !root.compact
             anchors.verticalCenter: parent.verticalCenter
             width: eject.x - 18 - 24 - 8
             text: root.name
@@ -56,6 +59,9 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
+        ToolTip.visible: root.compact && containsMouse
+        ToolTip.text: root.name
+        ToolTip.delay: 500
         onClicked: e => e.button === Qt.RightButton ? root.rightClicked(e.x, e.y) : root.clicked()
     }
 
@@ -70,8 +76,8 @@ Item {
         anchors.right: parent.right
         anchors.rightMargin: 16
         anchors.verticalCenter: parent.verticalCenter
-        width: root.ejectable ? 14 : 0; height: 14
-        visible: root.ejectable
+        width: root.ejectable && !root.compact ? 14 : 0; height: 14
+        visible: root.ejectable && !root.compact
         opacity: ejectArea.containsMouse ? 1 : 0.6
         sourceSize: Qt.size(28, 28)
         source: Theme.icon("media-eject-symbolic", Theme.textDim)

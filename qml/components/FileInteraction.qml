@@ -53,6 +53,8 @@ Item {
         }
         onClicked: e => {
             if (e.button === Qt.MiddleButton && root.entry.isDir) root.view.openInNewTab(root.entry.path)
+            else if (e.button === Qt.LeftButton && Settings.singleClick && !(e.modifiers & (Qt.ControlModifier | Qt.ShiftModifier)))
+                root.view.activate(root.entry)
         }
         onDoubleClicked: e => { if (e.button === Qt.LeftButton) root.view.activate(root.entry) }
     }

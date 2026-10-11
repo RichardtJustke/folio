@@ -79,6 +79,8 @@ public:
     Q_INVOKABLE void select(int index, int modifiers = 0);
     Q_INVOKABLE void selectAll();
     Q_INVOKABLE void clearSelection();
+    Q_INVOKABLE void invertSelection();
+    Q_INVOKABLE int selectMatching(const QString &pattern);
     Q_INVOKABLE void selectPath(const QString &path);
     Q_INVOKABLE QStringList selectedPaths() const;
     Q_INVOKABLE int rowOfIndex(int index) const { return m_rows.rowOfEntry(index); }

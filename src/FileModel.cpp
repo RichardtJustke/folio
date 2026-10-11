@@ -1,5 +1,7 @@
 #include "FileModel.h"
 
+#include <QRegularExpression>
+
 #include "Config.h"
 #include "Thumbnailer.h"
 
@@ -463,6 +465,28 @@ void FileModel::select(int index, int modifiers)
     }
     setCurrentIndex(index);
     bumpSelection();
+}
+
+void FileModel::invertSelection()
+{
+    QSet<QString> next;
+    for (const auto &e : std::as_const(m_entries))
+        if (!m_selected.contains(e.path))
+            next.insert(e.path);
+    m_selected = next;
+    bumpSelection();
+}
+
+int FileModel::selectMatching(const QString &pattern)
+{
+    const QRegularExpression re(QRegularExpression::wildcardToRegularExpression(pattern.trimmed()),
+                                QRegularExpression::CaseInsensitiveOption);
+    m_selected.clear();
+    for (const auto &e : std::as_const(m_entries))
+        if (re.match(e.name).hasMatch())
+            m_selected.insert(e.path);
+    bumpSelection();
+    return m_selected.size();
 }
 
 void FileModel::selectAll()

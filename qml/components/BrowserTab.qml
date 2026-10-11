@@ -19,6 +19,9 @@ Item {
     signal requestDelete(var paths, bool permanent)
     signal requestEmptyTrash
     signal quickLook
+    signal showProperties(var paths)
+    signal openWith(string path)
+    signal promptSelectPattern
 
     function activate(entry) {
         if (entry.isDir) nav.go(entry.path)
@@ -27,6 +30,13 @@ Item {
 
     function newFolder() {
         const p = ops.createFolder(fm.path)
+        if (!p) return
+        fm.selectPath(p)
+        fm.renamingPath = p
+    }
+
+    function newFile() {
+        const p = ops.createFile(fm.path)
         if (!p) return
         fm.selectPath(p)
         fm.renamingPath = p
@@ -67,6 +77,11 @@ Item {
         focus: true
         onActivate: entry => root.activate(entry)
         onNewFolder: root.newFolder()
+        onNewFile: root.newFile()
+        onShowProperties: paths => root.showProperties(paths)
+        onOpenWith: path => root.openWith(path)
+        onPromptSelectPattern: root.promptSelectPattern()
+        onOpenTerminalHere: dir => root.ops.openTerminal(dir)
         onOpenInNewTab: path => root.openInNewTab(path)
         onRevealInFolder: path => root.reveal(path)
         onRequestDelete: (paths, permanent) => root.requestDelete(paths, permanent)

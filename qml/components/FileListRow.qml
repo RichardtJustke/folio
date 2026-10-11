@@ -12,14 +12,14 @@ Item {
     height: Theme.listRowHeight
 
     readonly property color fg: selected ? "white" : Theme.text
-    readonly property color fgDim: selected ? Qt.rgba(1, 1, 1, 0.85) : Theme.textDim
+    readonly property color fgDim: selected ? Theme.overlay(0.85) : Theme.textDim
 
     Rectangle {
         anchors.fill: parent
         radius: 6
-        color: interaction.dropHover ? Qt.rgba(0.04, 0.52, 1, 0.25)
+        color: interaction.dropHover ? Theme.accentGlow
              : root.selected ? Theme.accentSoft
-             : root.entry.index % 2 ? Qt.rgba(1, 1, 1, 0.025) : "transparent"
+             : root.entry.index % 2 ? Theme.overlay(0.025) : "transparent"
         border.width: interaction.dropHover ? 1.5 : 0
         border.color: Theme.accent
     }

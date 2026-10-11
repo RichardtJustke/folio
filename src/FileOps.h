@@ -76,6 +76,30 @@ public:
     Q_INVOKABLE QString readText(const QString &path, int maxBytes = 65536) const;
     Q_INVOKABLE QString parentDir(const QString &path) const;
 
+    // ── extras estilo Nautilus ──
+    Q_INVOKABLE QString createFile(const QString &parentDir);
+    Q_INVOKABLE void makeLinks(const QStringList &paths);
+    Q_INVOKABLE void compress(const QStringList &paths, const QString &format); // "zip" | "tar.gz"
+    Q_INVOKABLE void extract(const QString &archive);
+    Q_INVOKABLE bool isArchive(const QString &path) const;
+    Q_INVOKABLE bool canZip() const;
+    Q_INVOKABLE void copyText(const QString &text);
+    Q_INVOKABLE void openNewWindow(const QString &path);
+    Q_INVOKABLE QVariantList openWithApps(const QString &path) const; // [{name, id, icon}]
+    Q_INVOKABLE QVariantList appsForMime(const QString &mime) const;  // [{name, id, icon}]
+    Q_INVOKABLE QString defaultAppId(const QString &mime) const;
+    Q_INVOKABLE QString defaultAppName(const QString &mime) const;
+    Q_INVOKABLE bool setDefaultApp(const QString &mime, const QString &appId);
+    Q_INVOKABLE void openWith(const QString &path, const QString &appId);
+    Q_INVOKABLE QVariantList sshHosts() const;               // Host do ~/.ssh/config
+    Q_INVOKABLE void connectServer(const QString &target);   // [sftp://][user@]host[:porta][/caminho]
+    Q_INVOKABLE bool hasNetworkMounts() const;
+    Q_INVOKABLE QString networkDir() const; // gvfs montado ou ""
+    Q_INVOKABLE QString resolveDir(const QString &typed) const;       // "~/x" -> abs se for pasta, senão ""
+    Q_INVOKABLE QVariantMap properties(const QString &path) const;
+    Q_INVOKABLE bool setPermissions(const QString &path, int mode);   // mode octal (0755 = 493)
+    Q_INVOKABLE void computeSize(const QStringList &paths);
+
 signals:
     void busyChanged();
     void progressChanged();
@@ -84,6 +108,8 @@ signals:
     void errorOccurred(const QString &message);
     void finished(const QString &message);
     void conflict(const QString &name, const QString &destDir, bool isDir);
+    void serverConnected(const QString &path);
+    void sizeComputed(qint64 bytes, int files, int folders);
 
 private:
     enum class UndoKind { Copy, Move, Rename, Trash, Mkdir };

@@ -8,14 +8,68 @@ Window {
 
     width: 1100
     height: 700
-    minimumWidth: 720
-    minimumHeight: 420
+    minimumWidth: 320
+    minimumHeight: 260
     visible: true
     color: "transparent"
     flags: Qt.Window | Qt.FramelessWindowHint
     title: fm ? fm.title : "Folio"
 
     readonly property bool maximized: visibility === Window.Maximized || visibility === Window.FullScreen
+
+    // ── layout responsivo ──
+    // auto: barra lateral cheia (≥860), só ícones (≥560) ou oculta
+    readonly property string sidebarState: {
+        const m = Settings.sidebarMode
+        if (m !== "auto") return m
+        return width >= 860 ? "full" : width >= 560 ? "compact" : "hidden"
+    }
+    property bool settingsOpen: false
+
+    function toggleSidebar() {
+        Settings.sidebarMode = sidebarState === "hidden" ? "full" : "hidden"
+    }
+
+    // 2 cliques no topo: maximizar; 3 cliques: tela cheia
+    property int topClicks: 0
+    Timer { id: topClickTimer; interval: 400; onTriggered: win.topClicks = 0 }
+    function topClick() {
+        topClicks++
+        topClickTimer.restart()
+        if (topClicks === 2) {
+            visibility === Window.Maximized ? showNormal() : showMaximized()
+        } else if (topClicks >= 3) {
+            topClicks = 0
+            toggleFullscreen()
+        }
+    }
+
+    function toggleFullscreen() {
+        visibility = visibility === Window.FullScreen ? Window.Windowed : Window.FullScreen
+    }
+
+    function openPath(typed) {
+        const dir = fileOps.resolveDir(typed)
+        if (dir) { nav.go(dir); return }
+        const p = typed.trim().replace(/^~/, Settings.home)
+        if (p.startsWith("/") && fileOps.parentDir(p) !== "" && fileOps.resolveDir(fileOps.parentDir(p))) {
+            toast.show("“" + typed.trim() + "” não encontrado", true)
+        } else {
+            toast.show("Caminho inválido", true)
+        }
+    }
+
+    function showProperties(paths) { if (paths.length > 0) propertiesDialog.show(paths) }
+
+    function promptSelectPattern() {
+        promptDialog.ask("Selecionar itens por padrão", "ex.: *.png", "Selecionar", v => {
+            const n = fm.selectMatching(v)
+            toast.show(n === 1 ? "1 item selecionado" : n + " itens selecionados")
+            focusView()
+        })
+    }
+
+    function zoom(delta) { Settings.iconSize = Settings.iconSize + delta }
 
     // ── abas ──
     ListModel { id: tabs } // { startPath, title }
@@ -41,7 +95,10 @@ Window {
     function focusView() { if (tab) tab.view.forceActiveFocus() }
 
     onCurrentTabChanged: Qt.callLater(focusView)
-    Component.onCompleted: newTab(fileOps.startPath())
+    Component.onCompleted: {
+        newTab(fileOps.startPath())
+        if (Qt.application.arguments.includes("--settings")) settingsOpen = true
+    }
 
     // ── serviços compartilhados ──
     FileOps {
@@ -49,6 +106,7 @@ Window {
         onErrorOccurred: msg => toast.show(msg, true)
         onFinished: msg => toast.show(msg)
         onConflict: (name, dir, isDir) => conflictDialog.ask(name, dir, isDir)
+        onServerConnected: path => { connectDialog.close(); nav.go(path) }
     }
 
     PlacesModel {
@@ -59,6 +117,7 @@ Window {
     function requestDelete(paths, permanent) {
         if (paths.length === 0) return
         if (!permanent && !fm.isTrash) { fileOps.trash(paths); return }
+        if (!Settings.confirmTrash) { fileOps.deletePermanently(paths); return }
         const what = paths.length === 1 ? "“" + paths[0].split("/").pop() + "”" : paths.length + " itens"
         confirmDialog.ask("Excluir " + what + " permanentemente?",
                           "Esta ação não pode ser desfeita.", "Excluir",
@@ -73,7 +132,7 @@ Window {
     Rectangle {
         id: frame
         anchors.fill: parent
-        radius: win.maximized ? 0 : Theme.radius
+        radius: win.maximized || win.visibility === Window.FullScreen ? 0 : Theme.radius
         color: Theme.windowBg
         border.width: win.maximized ? 0 : 1
         border.color: Theme.border
@@ -81,11 +140,26 @@ Window {
         Sidebar {
             id: sidebar
             anchors { left: parent.left; top: parent.top; bottom: parent.bottom; margins: 8 }
-            width: Theme.sidebarWidth
+            width: win.sidebarState === "full" ? Theme.sidebarWidth
+                 : win.sidebarState === "compact" ? Theme.sidebarCompactWidth : 0
+            visible: win.sidebarState !== "hidden"
+            compact: win.sidebarState === "compact"
+            onOpenSettings: win.settingsOpen = !win.settingsOpen
+            onTopClicked: win.topClick()
+            onConnectServer: connectDialog.show()
             window: win
             places: placesModel
             currentPath: win.fm ? win.fm.path : ""
-            onNavigate: path => win.nav.go(path)
+            onAddFolder: promptDialog.ask("Adicionar pasta à barra lateral", "~/Projetos ou /caminho/da/pasta", "Adicionar", v => {
+                const dir = fileOps.resolveDir(v)
+                if (dir) { placesModel.addFavorite(dir); toast.show("Pasta adicionada") }
+                else toast.show("Pasta não encontrada", true)
+            })
+            onNavigate: path => {
+                if (path !== "folio:network") { win.nav.go(path); return }
+                if (fileOps.hasNetworkMounts()) win.nav.go(fileOps.networkDir())
+                else connectDialog.show()
+            }
             onDropOnPlace: (d, path) => {
                 if (!d.hasUrls) return
                 fileOps.dropUrls(d.urls, path)
@@ -96,7 +170,7 @@ Window {
         Loader {
             id: header
             readonly property var search: item ? item.search : null
-            anchors { left: sidebar.right; right: parent.right; top: parent.top; topMargin: 4 }
+            anchors { left: sidebar.right; right: parent.right; top: parent.top; topMargin: 4; leftMargin: sidebar.visible ? 0 : -4 }
             height: Theme.headerHeight
             active: win.fm !== null
             sourceComponent: HeaderBar {
@@ -104,6 +178,10 @@ Window {
                 fileModel: win.fm
                 navigator: win.nav
                 ops: fileOps
+                sidebarHidden: win.sidebarState === "hidden"
+                onToggleSidebar: win.toggleSidebar()
+                onTopClicked: win.topClick()
+                onOpenPath: typed => win.openPath(typed)
                 onNewFolder: win.tab.newFolder()
                 onEmptyTrash: win.requestEmptyTrash()
                 onFocusView: win.focusView()
@@ -126,7 +204,15 @@ Window {
             }
         }
 
+        Rectangle { // fundo de leitura da área de arquivos
+            visible: !win.settingsOpen
+            anchors { left: sidebar.right; right: parent.right; top: tabStrip.bottom; bottom: parent.bottom; leftMargin: 4; margins: 4 }
+            radius: Theme.radius - 4
+            color: Theme.contentBacking
+        }
+
         StackLayout {
+            visible: !win.settingsOpen // com Configurações aberta, a vista de arquivos some (não vaza por trás do vidro)
             anchors { left: sidebar.right; right: parent.right; top: tabStrip.bottom; bottom: parent.bottom; leftMargin: 4 }
             currentIndex: win.currentTab
 
@@ -143,8 +229,18 @@ Window {
                     onRequestDelete: (paths, permanent) => win.requestDelete(paths, permanent)
                     onRequestEmptyTrash: win.requestEmptyTrash()
                     onQuickLook: quickLook.shown = true
+                    onShowProperties: paths => win.showProperties(paths)
+                    onOpenWith: path => openWithDialog.show(path)
+                    onPromptSelectPattern: win.promptSelectPattern()
                 }
             }
+        }
+        SettingsPage {
+            id: settingsPage
+            ops: fileOps
+            visible: win.settingsOpen
+            anchors { left: sidebar.right; right: parent.right; top: header.bottom; bottom: parent.bottom; margins: 6; leftMargin: 4 }
+            onClosed: win.settingsOpen = false
         }
     }
 
@@ -159,10 +255,15 @@ Window {
     Toast { id: toast }
     ConfirmDialog { id: confirmDialog }
     ConflictDialog { id: conflictDialog; ops: fileOps }
+    PromptDialog { id: promptDialog }
+    ConnectDialog { id: connectDialog; ops: fileOps }
+    PropertiesDialog { id: propertiesDialog; ops: fileOps }
+    OpenWithDialog { id: openWithDialog; ops: fileOps }
 
     // ── atalhos (desativados durante edição de texto/diálogos) ──
     readonly property bool typing: (fm && fm.renamingPath !== "") || (header.search !== null && header.search.active)
-                                   || confirmDialog.opened || conflictDialog.opened
+                                   || confirmDialog.opened || conflictDialog.opened || promptDialog.opened
+                                   || propertiesDialog.opened || openWithDialog.opened || connectDialog.opened || settingsOpen
     readonly property bool ready: fm !== null && !typing
 
     Shortcut { sequences: [StandardKey.Copy]; enabled: win.ready; onActivated: fileOps.copy(fm.selectedPaths()) }
@@ -186,7 +287,22 @@ Window {
     Shortcut { sequences: [StandardKey.SelectAll]; enabled: win.ready; onActivated: fm.selectAll() }
     Shortcut { sequence: "Ctrl+Shift+N"; enabled: win.ready && !fm.isTrash; onActivated: tab.newFolder() }
     Shortcut { sequences: ["F5", "Ctrl+R"]; enabled: win.ready; onActivated: fm.reload() }
-    Shortcut { sequences: [StandardKey.Find, "Ctrl+L"]; enabled: fm !== null; onActivated: if (header.search) header.search.focusField() }
+    Shortcut { sequences: [StandardKey.Find]; enabled: fm !== null; onActivated: if (header.search) header.search.focusField() }
+    Shortcut { sequences: ["Ctrl+L"]; enabled: fm !== null; onActivated: if (header.item) header.item.pathBar.edit() }
+    Shortcut { sequences: ["Ctrl+B", "F9"]; onActivated: win.toggleSidebar() }
+    Shortcut { sequences: ["F11"]; onActivated: win.toggleFullscreen() }
+    Shortcut { sequence: "Ctrl+,"; onActivated: win.settingsOpen = !win.settingsOpen }
+    Shortcut { sequence: "Escape"; enabled: win.settingsOpen; onActivated: win.settingsOpen = false }
+    Shortcut { sequences: ["Alt+Return", "Ctrl+I"]; enabled: win.ready; onActivated: win.showProperties(fm.selectedPaths().length ? fm.selectedPaths() : [fm.path]) }
+    Shortcut { sequence: "Ctrl+Shift+I"; enabled: win.ready; onActivated: fm.invertSelection() }
+    Shortcut { sequence: "Ctrl+S"; enabled: win.ready; onActivated: win.promptSelectPattern() }
+    Shortcut { sequence: "Ctrl+D"; enabled: win.ready && !fm.isTrash; onActivated: placesModel.addFavorite(fm.path) }
+    Shortcut { sequence: "Ctrl+N"; onActivated: fileOps.openNewWindow(fm ? fm.path : fileOps.startPath()) }
+    Shortcut { sequence: "Ctrl+Shift+C"; enabled: win.ready; onActivated: fileOps.copyText(fm.selectedPaths().length ? fm.selectedPaths().join("\n") : fm.path) }
+    Shortcut { sequences: ["Ctrl+=", "Ctrl++"]; onActivated: win.zoom(8) }
+    Shortcut { sequence: "Ctrl+-"; onActivated: win.zoom(-8) }
+    Shortcut { sequence: "Ctrl+0"; onActivated: Settings.iconSize = 76 }
+    Shortcut { sequence: "Ctrl+Alt+N"; enabled: win.ready && !fm.isTrash; onActivated: tab.newFile() }
     Shortcut { sequence: "Ctrl+1"; enabled: win.ready; onActivated: fm.viewMode = "grid" }
     Shortcut { sequence: "Ctrl+2"; enabled: win.ready; onActivated: fm.viewMode = "list" }
     Shortcut { sequence: "Ctrl+T"; onActivated: win.newTab(fm ? fm.path : fileOps.startPath()) }

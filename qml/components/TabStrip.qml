@@ -31,8 +31,8 @@ Item {
                 width: (parent.width - (root.tabs.count - 1) * 6) / root.tabs.count
                 height: 28
                 radius: 14
-                color: drop.containsDrag ? Qt.rgba(0.04, 0.52, 1, 0.25)
-                     : current ? Theme.selected : area.containsMouse ? Theme.hover : Qt.rgba(1, 1, 1, 0.03)
+                color: drop.containsDrag ? Theme.accentGlow
+                     : current ? Theme.selected : area.containsMouse ? Theme.hover : Theme.overlay(0.03)
                 border.width: current || drop.containsDrag ? 1 : 0
                 border.color: drop.containsDrag ? Theme.accent : Theme.border
 

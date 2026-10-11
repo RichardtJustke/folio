@@ -22,9 +22,9 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             width: Theme.iconSize + 12; height: Theme.iconSize + 8
             radius: 8
-            color: interaction.dropHover ? Qt.rgba(0.04, 0.52, 1, 0.25)
+            color: interaction.dropHover ? Theme.accentGlow
                  : root.selected ? Theme.selected
-                 : interaction.hovered ? Qt.rgba(1, 1, 1, 0.03) : "transparent"
+                 : interaction.hovered ? Theme.overlay(0.03) : "transparent"
             border.width: interaction.dropHover ? 1.5 : 0
             border.color: Theme.accent
 
@@ -60,7 +60,7 @@ Item {
                 width: thumb.paintedWidth + 2; height: thumb.paintedHeight + 2
                 color: "transparent"
                 border.width: 1
-                border.color: Qt.rgba(1, 1, 1, 0.18)
+                border.color: Theme.overlay(0.18)
                 radius: 2
             }
             Image { // emblema de link simbólico

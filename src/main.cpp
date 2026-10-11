@@ -9,6 +9,7 @@
 #include "Config.h"
 #include "IconProvider.h"
 #include "Thumbnailer.h"
+#include <QDir>
 
 namespace {
 // Tema de ícones: config.json > tema da plataforma (qt6ct) > gsettings > Adwaita
@@ -35,6 +36,7 @@ int main(int argc, char *argv[])
     app.setApplicationName("folio");
     app.setOrganizationName("folio");
     app.setDesktopFileName("folio"); // app_id no Wayland -> casa com a window rule
+    app.setWindowIcon(QIcon(QStringLiteral(":/qt/qml/Folio/assets/folio.svg")));
     QQuickStyle::setStyle("Basic");
 
     setupIconTheme();

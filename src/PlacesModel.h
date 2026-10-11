@@ -36,6 +36,7 @@ signals:
     void errorOccurred(const QString &message);
 
 private:
+    QList<Place> loadStandard() const;
     QList<Place> loadFavorites() const;
     QList<Place> loadVolumes() const;
     void saveFavorites(const QList<Place> &favs);

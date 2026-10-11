@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import Folio
 
 Item {
@@ -10,6 +11,17 @@ Item {
     required property FileOps ops
 
     property alias search: searchField
+    property alias pathBar: pathBar
+    property bool sidebarHidden: false
+    readonly property bool narrow: width < 700
+    readonly property bool tiny: width < 460
+    readonly property bool controlsLeft: Settings.windowControls === "left"
+    readonly property bool controlsRight: Settings.windowControls === "right"
+
+    signal toggleSidebar
+    signal openSettings
+    signal openPath(string path)
+    signal topClicked
 
     signal newFolder
     signal emptyTrash
@@ -19,27 +31,53 @@ Item {
 
     // arrastar / duplo clique para maximizar
     MouseArea {
+        property point pressPos
         anchors.fill: parent
-        onPressed: root.window.startSystemMove()
-        onDoubleClicked: root.window.visibility === Window.Maximized ? root.window.showNormal() : root.window.showMaximized()
+        onPressed: e => { pressPos = Qt.point(e.x, e.y); root.topClicked() }
+        onPositionChanged: e => {
+            // só vira "mover janela" depois de arrastar de verdade (permite duplo/triplo clique)
+            if (pressed && Math.abs(e.x - pressPos.x) + Math.abs(e.y - pressPos.y) > 8) root.window.startSystemMove()
+        }
+    }
+
+    WindowControls {
+        id: ctlLeft
+        visible: root.controlsLeft
+        window: root.window
+        anchors { left: parent.left; leftMargin: 10; verticalCenter: parent.verticalCenter }
+    }
+
+    ToolButton {
+        id: sidebarBtn
+        visible: root.sidebarHidden
+        icon: "sidebar-show-symbolic,view-sidebar-symbolic,go-next-symbolic"
+        anchors.left: ctlLeft.visible ? ctlLeft.right : parent.left
+        anchors.leftMargin: 10
+        onActivated: root.toggleSidebar()
     }
 
     NavPill {
         id: nav
-        anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter }
+        anchors {
+            left: sidebarBtn.visible ? sidebarBtn.right : ctlLeft.visible ? ctlLeft.right : parent.left
+            leftMargin: sidebarBtn.visible || ctlLeft.visible ? 8 : 14
+            verticalCenter: parent.verticalCenter
+        }
         canGoBack: root.navigator.canGoBack
         canGoForward: root.navigator.canGoForward
         onBack: root.navigator.back()
         onForward: root.navigator.forward()
     }
 
-    Text {
-        anchors { left: nav.right; leftMargin: 14; right: tools.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
-        text: root.fileModel.title
-        color: Theme.text
-        font.pixelSize: 15
-        font.weight: Font.Bold
-        elide: Text.ElideRight
+    PathBar {
+        id: pathBar
+        anchors { left: nav.right; leftMargin: 12; right: tools.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
+        path: root.fileModel.path
+        title: root.fileModel.title
+        special: root.fileModel.isTrash || root.fileModel.isSearch
+        onNavigate: p => root.navigator.go(p)
+        onSubmitted: typed => root.openPath(typed)
+        onClosed: root.focusView()
     }
 
     component ToolButton: Rectangle {
@@ -65,7 +103,7 @@ Item {
 
     Row {
         id: tools
-        anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
+        anchors { right: ctlRight.visible ? ctlRight.left : parent.right; rightMargin: ctlRight.visible ? 8 : 14; verticalCenter: parent.verticalCenter }
         spacing: 6
 
         Row { // progresso + cancelar
@@ -103,6 +141,7 @@ Item {
         }
 
         Rectangle { // grade | lista
+            visible: !root.narrow
             anchors.verticalCenter: parent.verticalCenter
             width: 68; height: 32; radius: 16
             color: Theme.pillBg
@@ -126,6 +165,7 @@ Item {
         }
 
         ToolButton {
+            visible: !root.narrow
             icon: root.fileModel.sortDescending ? "view-sort-descending-symbolic" : "view-sort-ascending-symbolic"
             onActivated: sortMenu.popup()
             GlassMenu {
@@ -142,17 +182,47 @@ Item {
             }
         }
         ToolButton {
+            visible: !root.narrow
             icon: root.fileModel.showHidden ? "view-reveal-symbolic" : "view-conceal-symbolic"
             checked: root.fileModel.showHidden
             onActivated: root.fileModel.showHidden = !root.fileModel.showHidden
         }
-        ToolButton { icon: "folder-new-symbolic"; visible: !root.fileModel.isTrash; onActivated: root.newFolder() }
+        ToolButton { icon: "folder-new-symbolic"; visible: !root.narrow && !root.fileModel.isTrash; onActivated: root.newFolder() }
+
+        ToolButton { // overflow no modo estreito
+            visible: root.narrow
+            icon: "view-more-symbolic,open-menu-symbolic,view-list-symbolic"
+            onActivated: moreMenu.popup()
+            GlassMenu {
+                id: moreMenu
+                GlassMenuItem { text: "Ícones"; tick: root.fileModel.viewMode === "grid"; onTriggered: root.fileModel.viewMode = "grid" }
+                GlassMenuItem { text: "Lista"; tick: root.fileModel.viewMode === "list"; onTriggered: root.fileModel.viewMode = "list" }
+                MenuSeparator { contentItem: Rectangle { implicitHeight: 1; color: Theme.border } }
+                GlassMenuItem { text: "Ordenar por Nome"; tick: root.fileModel.sortKey === "name"; onTriggered: root.fileModel.sortBy("name") }
+                GlassMenuItem { text: "Ordenar por Data"; tick: root.fileModel.sortKey === "modified"; onTriggered: root.fileModel.sortBy("modified") }
+                GlassMenuItem { text: "Ordenar por Tamanho"; tick: root.fileModel.sortKey === "size"; onTriggered: root.fileModel.sortBy("size") }
+                GlassMenuItem {
+                    text: "Mostrar Arquivos Ocultos"
+                    tick: root.fileModel.showHidden
+                    onTriggered: root.fileModel.showHidden = !root.fileModel.showHidden
+                }
+                GlassMenuItem { text: "Nova Pasta"; visible: !root.fileModel.isTrash; onTriggered: root.newFolder() }
+            }
+        }
 
         SearchField {
             id: searchField
+            compact: root.tiny
             anchors.verticalCenter: parent.verticalCenter
             fileModel: root.fileModel
             onEscaped: root.focusView()
         }
+    }
+
+    WindowControls {
+        id: ctlRight
+        visible: root.controlsRight
+        window: root.window
+        anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
     }
 }

@@ -7,23 +7,29 @@ Rectangle {
     id: root
 
     required property FileModel fileModel
+    property bool compact: false
+    property bool open: false
     signal escaped
 
     readonly property bool active: field.activeFocus || field.text !== ""
 
-    function focusField() { field.forceActiveFocus(); field.selectAll() }
+    function focusField() {
+        open = true
+        field.forceActiveFocus()
+        field.selectAll()
+    }
 
-    width: active ? 260 : 170
+    width: compact ? (active || open ? 170 : 32) : (active ? 260 : 170)
     height: 32
     radius: 16
     color: Theme.pillBg
     border.width: 1
-    border.color: field.activeFocus ? Qt.rgba(0.04, 0.52, 1, 0.7) : Theme.border
+    border.color: field.activeFocus ? Theme.accent : Theme.border
     Behavior on width { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
 
     Image {
         id: glass
-        anchors { left: parent.left; leftMargin: 10; verticalCenter: parent.verticalCenter }
+        anchors { left: parent.left; leftMargin: root.compact && !root.active ? 9 : 10; verticalCenter: parent.verticalCenter }
         width: 14; height: 14
         sourceSize: Qt.size(28, 28)
         source: Theme.icon("system-search-symbolic", Theme.textDim)
@@ -32,6 +38,8 @@ Rectangle {
     TextField {
         id: field
         anchors { left: glass.right; leftMargin: 4; right: chip.left; rightMargin: 4; verticalCenter: parent.verticalCenter }
+        visible: !root.compact || root.active || root.open
+        onActiveFocusChanged: if (!activeFocus && text === "") root.open = false
         placeholderText: "Buscar"
         placeholderTextColor: Theme.textFaint
         color: Theme.text
@@ -82,5 +90,11 @@ Rectangle {
             anchors.margins: -4
             onClicked: { root.fileModel.searchQuery = ""; root.escaped() }
         }
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        enabled: root.compact && !root.active && !root.open
+        onClicked: root.focusField()
     }
 }

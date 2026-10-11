@@ -34,6 +34,11 @@ Item {
     signal requestDelete(var paths, bool permanent)
     signal requestEmptyTrash
     signal quickLook
+    signal newFile
+    signal showProperties(var paths)
+    signal openWith(string path)
+    signal promptSelectPattern
+    signal openTerminalHere(string dir)
 
     function openItemMenu() { itemMenu.popup() }
 
@@ -201,7 +206,7 @@ Item {
             height: Math.abs(bg.cur.y - bg.start.y)
             color: Qt.rgba(0.04, 0.52, 1, 0.15)
             border.width: 1
-            border.color: Qt.rgba(0.04, 0.52, 1, 0.7)
+            border.color: Theme.accent
             radius: 2
         }
 
@@ -280,6 +285,16 @@ Item {
             visible: root.showLocation && root.selection.length === 1
             onTriggered: root.revealInFolder(root.selection[0])
         }
+        GlassMenuItem {
+            text: "Abrir com…"
+            visible: root.selection.length === 1 && !root.currentEntry.isDir && !root.fileModel.isTrash
+            onTriggered: root.openWith(root.selection[0])
+        }
+        GlassMenuItem {
+            text: "Abrir Terminal Aqui"
+            visible: root.singleDir && !root.fileModel.isTrash
+            onTriggered: root.openTerminalHere(root.selection[0])
+        }
         GlassMenuItem { text: "Visualização Rápida"; onTriggered: root.quickLook() }
         Separator {}
         GlassMenuItem {
@@ -293,6 +308,16 @@ Item {
             enabled: root.selection.length === 1
             onTriggered: root.fileModel.renamingPath = root.selection[0]
         }
+        GlassMenuItem {
+            text: "Duplicar"
+            visible: !root.fileModel.isTrash
+            onTriggered: root.ops.transfer(root.selection, root.fileModel.path, false)
+        }
+        GlassMenuItem {
+            text: "Criar Link"
+            visible: !root.fileModel.isTrash
+            onTriggered: root.ops.makeLinks(root.selection)
+        }
         GlassMenuItem { text: "Copiar"; onTriggered: root.ops.copy(root.selection) }
         GlassMenuItem { text: "Recortar"; visible: !root.fileModel.isTrash; onTriggered: root.ops.cut(root.selection) }
         GlassMenuItem {
@@ -301,6 +326,25 @@ Item {
             enabled: root.ops.canPaste
             onTriggered: root.ops.paste(root.selection[0])
         }
+        Separator {}
+        GlassMenuItem {
+            text: "Compactar em .zip"
+            visible: !root.fileModel.isTrash && root.ops.canZip()
+            onTriggered: root.ops.compress(root.selection, "zip")
+        }
+        GlassMenuItem {
+            text: "Compactar em .tar.gz"
+            visible: !root.fileModel.isTrash
+            onTriggered: root.ops.compress(root.selection, "tar.gz")
+        }
+        GlassMenuItem {
+            text: "Extrair Aqui"
+            visible: root.selection.length === 1 && root.ops.isArchive(root.selection[0])
+            onTriggered: root.ops.extract(root.selection[0])
+        }
+        Separator {}
+        GlassMenuItem { text: "Copiar Caminho"; onTriggered: root.ops.copyText(root.selection.join("\n")) }
+        GlassMenuItem { text: "Propriedades"; onTriggered: root.showProperties(root.selection) }
         Separator {}
         GlassMenuItem {
             text: "Adicionar aos Favoritos"
@@ -318,6 +362,7 @@ Item {
     GlassMenu {
         id: bgMenu
         GlassMenuItem { text: "Nova Pasta"; visible: !root.fileModel.isTrash; onTriggered: root.newFolder() }
+        GlassMenuItem { text: "Novo Arquivo"; visible: !root.fileModel.isTrash; onTriggered: root.newFile() }
         GlassMenuItem {
             text: "Colar"
             visible: !root.fileModel.isTrash
@@ -349,6 +394,12 @@ Item {
             onTriggered: root.fileModel.showHidden = !root.fileModel.showHidden
         }
         Separator {}
+        GlassMenuItem { text: "Selecionar Tudo"; onTriggered: root.fileModel.selectAll() }
+        GlassMenuItem { text: "Inverter Seleção"; onTriggered: root.fileModel.invertSelection() }
+        GlassMenuItem { text: "Selecionar por Padrão…"; onTriggered: root.promptSelectPattern() }
+        Separator {}
         GlassMenuItem { text: "Abrir Terminal Aqui"; onTriggered: root.ops.openTerminal(root.fileModel.path) }
+        GlassMenuItem { text: "Copiar Caminho da Pasta"; onTriggered: root.ops.copyText(root.fileModel.path) }
+        GlassMenuItem { text: "Propriedades"; onTriggered: root.showProperties([root.fileModel.path]) }
     }
 }

@@ -11,6 +11,10 @@
 #include <QFutureWatcher>
 #include <QGuiApplication>
 #include <QMimeData>
+#include <QMimeDatabase>
+#include <QPointer>
+#include <QTimer>
+#include <QRegularExpression>
 #include <QProcess>
 #include <QSaveFile>
 #include <QStandardPaths>
@@ -249,7 +253,14 @@ void FileOps::open(const QString &path)
 
 void FileOps::openTerminal(const QString &dir)
 {
-    QProcess::startDetached(qEnvironmentVariable("TERMINAL", "kitty"), {}, dir);
+    auto term = Config::load().value("terminal").toString().trimmed();
+    if (term.isEmpty())
+        term = qEnvironmentVariable("TERMINAL", "kitty");
+    auto args = QProcess::splitCommand(term);
+    if (args.isEmpty())
+        return;
+    const auto prog = args.takeFirst();
+    QProcess::startDetached(prog, args, dir);
 }
 
 void FileOps::copy(const QStringList &paths)
@@ -693,4 +704,498 @@ QString FileOps::readText(const QString &path, int maxBytes) const
 QString FileOps::parentDir(const QString &path) const
 {
     return QFileInfo(path).absolutePath();
+}
+
+// ───────────────────────── extras estilo Nautilus ─────────────────────────
+
+namespace {
+
+struct DesktopApp {
+    QString id, name, exec, icon;
+    QStringList mimes;
+};
+
+QList<DesktopApp> scanApps()
+{
+    QList<DesktopApp> apps;
+    QSet<QString> seen;
+    const auto dirs = QStandardPaths::standardLocations(QStandardPaths::ApplicationsLocation);
+    for (const auto &d : dirs) {
+        QDirIterator it(d, {"*.desktop"}, QDir::Files, QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            const auto file = it.next();
+            const auto id = QDir(d).relativeFilePath(file).replace('/', '-');
+            if (seen.contains(id))
+                continue;
+            QFile f(file);
+            if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
+                continue;
+            DesktopApp a;
+            a.id = id;
+            bool inEntry = false, hidden = false, isApp = true;
+            while (!f.atEnd()) {
+                const auto line = QString::fromUtf8(f.readLine()).trimmed();
+                if (line.startsWith('[')) {
+                    inEntry = line == "[Desktop Entry]";
+                    continue;
+                }
+                if (!inEntry)
+                    continue;
+                const auto eq = line.indexOf('=');
+                if (eq < 0)
+                    continue;
+                const auto k = line.left(eq), v = line.mid(eq + 1);
+                if (k == "Name") a.name = v;
+                else if (k == "Exec") a.exec = v;
+                else if (k == "Icon") a.icon = v;
+                else if (k == "MimeType") a.mimes = v.split(';', Qt::SkipEmptyParts);
+                else if ((k == "NoDisplay" || k == "Hidden") && v == "true") hidden = true;
+                else if (k == "Type" && v != "Application") isApp = false;
+            }
+            seen.insert(id);
+            if (!hidden && isApp && !a.exec.isEmpty() && !a.name.isEmpty())
+                apps.append(a);
+        }
+    }
+    return apps;
+}
+
+const QList<DesktopApp> &apps()
+{
+    static const QList<DesktopApp> cache = scanApps();
+    return cache;
+}
+
+QStringList expandExec(const QString &exec, const QString &path)
+{
+    QStringList out;
+    for (auto tok : QProcess::splitCommand(exec)) {
+        if (tok == "%f" || tok == "%F") out << path;
+        else if (tok == "%u" || tok == "%U") out << path;
+        else if (tok.size() == 2 && tok[0] == '%' && QStringLiteral("ickdDnNvm").contains(tok[1])) continue;
+        else out << tok.replace("%%", "%");
+    }
+    if (!exec.contains("%f") && !exec.contains("%F") && !exec.contains("%u") && !exec.contains("%U"))
+        out << path;
+    return out;
+}
+
+QString permString(QFileDevice::Permissions p)
+{
+    QString s;
+    s += p & QFileDevice::ReadOwner ? 'r' : '-';
+    s += p & QFileDevice::WriteOwner ? 'w' : '-';
+    s += p & QFileDevice::ExeOwner ? 'x' : '-';
+    s += p & QFileDevice::ReadGroup ? 'r' : '-';
+    s += p & QFileDevice::WriteGroup ? 'w' : '-';
+    s += p & QFileDevice::ExeGroup ? 'x' : '-';
+    s += p & QFileDevice::ReadOther ? 'r' : '-';
+    s += p & QFileDevice::WriteOther ? 'w' : '-';
+    s += p & QFileDevice::ExeOther ? 'x' : '-';
+    return s;
+}
+
+int permMode(QFileDevice::Permissions p)
+{
+    int m = 0;
+    if (p & QFileDevice::ReadOwner) m |= 0400;
+    if (p & QFileDevice::WriteOwner) m |= 0200;
+    if (p & QFileDevice::ExeOwner) m |= 0100;
+    if (p & QFileDevice::ReadGroup) m |= 040;
+    if (p & QFileDevice::WriteGroup) m |= 020;
+    if (p & QFileDevice::ExeGroup) m |= 010;
+    if (p & QFileDevice::ReadOther) m |= 04;
+    if (p & QFileDevice::WriteOther) m |= 02;
+    if (p & QFileDevice::ExeOther) m |= 01;
+    return m;
+}
+
+const QStringList kArchiveSuffixes = {"zip", "tar", "gz", "tgz", "bz2", "xz", "zst", "7z", "rar", "tbz2", "txz"};
+
+}
+
+QString FileOps::createFile(const QString &parentDir)
+{
+    QString target = parentDir + "/Novo arquivo";
+    for (int n = 2; QFileInfo::exists(target); ++n)
+        target = parentDir + QStringLiteral("/Novo arquivo %1").arg(n);
+    QFile f(target);
+    if (!f.open(QIODevice::WriteOnly)) {
+        emit errorOccurred(QStringLiteral("Não foi possível criar o arquivo"));
+        return {};
+    }
+    f.close();
+    pushUndo(UndoKind::Mkdir, {{parentDir, target}});
+    return target;
+}
+
+void FileOps::makeLinks(const QStringList &paths)
+{
+    int ok = 0;
+    for (const auto &p : paths) {
+        const QFileInfo fi(p);
+        QString target = fi.absolutePath() + "/Link para " + fi.fileName();
+        for (int n = 2; QFileInfo::exists(target) || QFileInfo(target).isSymLink(); ++n)
+            target = fi.absolutePath() + QStringLiteral("/Link para %1 %2").arg(fi.fileName()).arg(n);
+        if (QFile::link(p, target)) {
+            ++ok;
+            pushUndo(UndoKind::Mkdir, {{fi.absolutePath(), target}});
+        } else {
+            emit errorOccurred(QStringLiteral("Não foi possível criar link para %1").arg(fi.fileName()));
+        }
+    }
+    if (ok)
+        emit finished(ok == 1 ? QStringLiteral("Link criado") : QStringLiteral("%1 links criados").arg(ok));
+}
+
+bool FileOps::canZip() const
+{
+    return !QStandardPaths::findExecutable("zip").isEmpty();
+}
+
+bool FileOps::isArchive(const QString &path) const
+{
+    const QFileInfo fi(path);
+    return fi.isFile() && kArchiveSuffixes.contains(fi.suffix().toLower());
+}
+
+void FileOps::compress(const QStringList &paths, const QString &format)
+{
+    if (paths.isEmpty())
+        return;
+    const QFileInfo first(paths.first());
+    const auto dir = first.absolutePath();
+    const bool zip = format == "zip" && canZip();
+    const QString ext = zip ? ".zip" : ".tar.gz";
+    const QString base = paths.size() == 1 ? first.completeBaseName().isEmpty() ? first.fileName() : first.fileName() : QStringLiteral("Arquivo");
+    QString out = dir + "/" + base + ext;
+    for (int n = 2; QFileInfo::exists(out); ++n)
+        out = dir + QStringLiteral("/%1 %2%3").arg(base).arg(n).arg(ext);
+
+    QStringList names;
+    for (const auto &p : paths)
+        names << QFileInfo(p).fileName();
+
+    auto *proc = new QProcess(this);
+    proc->setWorkingDirectory(dir);
+    connect(proc, &QProcess::finished, this, [this, proc, out](int code, QProcess::ExitStatus st) {
+        proc->deleteLater();
+        setBusy(false);
+        if (st == QProcess::NormalExit && code == 0) {
+            pushUndo(UndoKind::Mkdir, {{QFileInfo(out).absolutePath(), out}});
+            emit finished(QStringLiteral("Compactado: %1").arg(QFileInfo(out).fileName()));
+        } else {
+            QFile::remove(out);
+            emit errorOccurred(QStringLiteral("Falha ao compactar"));
+        }
+    });
+    connect(proc, &QProcess::errorOccurred, this, [this, proc](QProcess::ProcessError e) {
+        if (e == QProcess::FailedToStart) {
+            proc->deleteLater();
+            setBusy(false);
+            emit errorOccurred(QStringLiteral("Ferramenta de compactação não encontrada"));
+        }
+    });
+    setBusy(true, QStringLiteral("Compactando"));
+    if (zip)
+        proc->start("zip", QStringList{"-rq", out} + names);
+    else
+        proc->start("tar", QStringList{"-czf", out, "-C", dir} + names);
+}
+
+void FileOps::extract(const QString &archive)
+{
+    const QFileInfo fi(archive);
+    QString base = fi.completeBaseName();
+    if (base.endsWith(".tar"))
+        base.chop(4);
+    if (base.isEmpty())
+        base = fi.fileName();
+    QString dest = fi.absolutePath() + "/" + base;
+    for (int n = 2; QFileInfo::exists(dest); ++n)
+        dest = fi.absolutePath() + QStringLiteral("/%1 %2").arg(base).arg(n);
+    if (!QDir().mkpath(dest)) {
+        emit errorOccurred(QStringLiteral("Não foi possível criar a pasta de destino"));
+        return;
+    }
+
+    QString prog;
+    QStringList args;
+    const auto suffix = fi.suffix().toLower();
+    if (!QStandardPaths::findExecutable("bsdtar").isEmpty()) {
+        prog = "bsdtar"; args = {"-xf", archive, "-C", dest};
+    } else if (suffix == "zip" && !QStandardPaths::findExecutable("unzip").isEmpty()) {
+        prog = "unzip"; args = {"-q", archive, "-d", dest};
+    } else if (suffix == "7z" && !QStandardPaths::findExecutable("7z").isEmpty()) {
+        prog = "7z"; args = {"x", "-o" + dest, archive};
+    } else {
+        prog = "tar"; args = {"-xf", archive, "-C", dest};
+    }
+
+    auto *proc = new QProcess(this);
+    connect(proc, &QProcess::finished, this, [this, proc, dest](int code, QProcess::ExitStatus st) {
+        proc->deleteLater();
+        setBusy(false);
+        if (st == QProcess::NormalExit && code == 0) {
+            pushUndo(UndoKind::Mkdir, {{QFileInfo(dest).absolutePath(), dest}});
+            emit finished(QStringLiteral("Extraído em “%1”").arg(QFileInfo(dest).fileName()));
+        } else {
+            QDir(dest).removeRecursively();
+            emit errorOccurred(QStringLiteral("Falha ao extrair"));
+        }
+    });
+    connect(proc, &QProcess::errorOccurred, this, [this, proc, dest](QProcess::ProcessError e) {
+        if (e == QProcess::FailedToStart) {
+            proc->deleteLater();
+            setBusy(false);
+            QDir(dest).removeRecursively();
+            emit errorOccurred(QStringLiteral("Ferramenta de extração não encontrada"));
+        }
+    });
+    setBusy(true, QStringLiteral("Extraindo"));
+    proc->start(prog, args);
+}
+
+void FileOps::copyText(const QString &text)
+{
+    QGuiApplication::clipboard()->setText(text);
+    emit finished(QStringLiteral("Copiado"));
+}
+
+void FileOps::openNewWindow(const QString &path)
+{
+    QProcess::startDetached(QCoreApplication::applicationFilePath(), {path});
+}
+
+QVariantList FileOps::appsForMime(const QString &mimeName) const
+{
+    QVariantList out;
+    QStringList wanted{mimeName};
+    wanted << QMimeDatabase().mimeTypeForName(mimeName).allAncestors();
+    for (const auto &a : apps()) {
+        bool match = false;
+        for (const auto &m : wanted)
+            if (a.mimes.contains(m)) {
+                match = true;
+                break;
+            }
+        if (match)
+            out.append(QVariantMap{{"name", a.name}, {"id", a.id}, {"icon", a.icon}});
+    }
+    std::sort(out.begin(), out.end(), [](const QVariant &x, const QVariant &y) {
+        return x.toMap().value("name").toString().localeAwareCompare(y.toMap().value("name").toString()) < 0;
+    });
+    return out;
+}
+
+QVariantList FileOps::openWithApps(const QString &path) const
+{
+    return appsForMime(QMimeDatabase().mimeTypeForFile(path).name());
+}
+
+QString FileOps::defaultAppId(const QString &mime) const
+{
+    QProcess p;
+    p.start("xdg-mime", {"query", "default", mime});
+    if (!p.waitForFinished(1500))
+        return {};
+    return QString::fromUtf8(p.readAllStandardOutput()).trimmed();
+}
+
+QString FileOps::defaultAppName(const QString &mime) const
+{
+    const auto id = defaultAppId(mime);
+    if (id.isEmpty())
+        return {};
+    for (const auto &a : apps())
+        if (a.id == id)
+            return a.name;
+    return id;
+}
+
+bool FileOps::setDefaultApp(const QString &mime, const QString &appId)
+{
+    if (QProcess::execute("xdg-mime", {"default", appId, mime}) == 0)
+        return true;
+    emit errorOccurred(QStringLiteral("Não foi possível definir o aplicativo padrão"));
+    return false;
+}
+
+void FileOps::openWith(const QString &path, const QString &appId)
+{
+    for (const auto &a : apps()) {
+        if (a.id != appId)
+            continue;
+        auto args = expandExec(a.exec, path);
+        if (args.isEmpty())
+            return;
+        const auto prog = args.takeFirst();
+        QProcess::startDetached(prog, args);
+        return;
+    }
+    emit errorOccurred(QStringLiteral("Aplicativo não encontrado"));
+}
+
+QVariantList FileOps::sshHosts() const
+{
+    QVariantList out;
+    QFile f(QDir::homePath() + "/.ssh/config");
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
+        return out;
+    while (!f.atEnd()) {
+        const auto line = QString::fromUtf8(f.readLine()).trimmed();
+        if (!line.startsWith("Host ", Qt::CaseInsensitive))
+            continue;
+        for (const auto &h : line.mid(5).split(QRegularExpression("\\s+"), Qt::SkipEmptyParts))
+            if (!h.contains('*') && !h.contains('?') && !h.startsWith('!'))
+                out.append(h);
+    }
+    return out;
+}
+
+bool FileOps::hasNetworkMounts() const
+{
+    const auto dir = networkDir();
+    return !dir.isEmpty() && !QDir(dir).entryList(QDir::AllEntries | QDir::NoDotAndDotDot).isEmpty();
+}
+
+void FileOps::connectServer(const QString &targetIn)
+{
+    QString t = targetIn.trimmed();
+    if (t.startsWith("sftp://"))
+        t = t.mid(7);
+    if (t.isEmpty()) {
+        emit errorOccurred(QStringLiteral("Informe o servidor (usuario@host)"));
+        return;
+    }
+    const int slash = t.indexOf('/');
+    const QString authority = slash < 0 ? t : t.left(slash);
+    const QString remote = slash < 0 ? QString() : t.mid(slash);
+    QString hostPart = authority.mid(authority.indexOf('@') + 1);
+    const QString host = hostPart.left(hostPart.indexOf(':') < 0 ? hostPart.size() : hostPart.indexOf(':'));
+
+    auto *proc = new QProcess(this);
+    connect(proc, &QProcess::finished, this, [this, proc, host, remote](int code, QProcess::ExitStatus) {
+        const auto err = QString::fromLocal8Bit(proc->readAllStandardError()).trimmed();
+        proc->deleteLater();
+        setBusy(false);
+        // "já montado" também conta como sucesso
+        if (code != 0 && !err.contains("already mounted", Qt::CaseInsensitive)) {
+            emit errorOccurred(err.isEmpty() ? QStringLiteral("Falha ao conectar") : err.left(300));
+            return;
+        }
+        const auto gvfs = networkDir();
+        for (const auto &e : QDir(gvfs).entryList(QDir::AllEntries | QDir::NoDotAndDotDot)) {
+            if (e.startsWith("sftp:") && e.contains("host=" + host)) {
+                emit finished(QStringLiteral("Conectado a %1").arg(host));
+                emit serverConnected(gvfs + "/" + e + remote);
+                return;
+            }
+        }
+        emit errorOccurred(QStringLiteral("Conectado, mas a montagem não apareceu em gvfs"));
+    });
+    connect(proc, &QProcess::errorOccurred, this, [this, proc](QProcess::ProcessError e) {
+        if (e == QProcess::FailedToStart) {
+            proc->deleteLater();
+            setBusy(false);
+            emit errorOccurred(QStringLiteral("Instale gvfs (gio) e gvfs-sftp para conectar via SSH"));
+        }
+    });
+    setBusy(true, QStringLiteral("Conectando"));
+    proc->setStandardInputFile(QProcess::nullDevice()); // sem prompt: use chave SSH / ssh-agent
+    proc->start("gio", {"mount", "sftp://" + authority + "/"});
+    QTimer::singleShot(45000, proc, [proc] { if (proc->state() != QProcess::NotRunning) proc->kill(); });
+}
+
+QString FileOps::networkDir() const
+{
+    const auto dir = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation) + "/gvfs";
+    return QFileInfo(dir).isDir() ? dir : QString();
+}
+
+QString FileOps::resolveDir(const QString &typed) const
+{
+    auto t = typed.trimmed();
+    if (t.isEmpty())
+        return {};
+    if (t.startsWith("file://"))
+        t = QUrl(t).toLocalFile();
+    t = Config::expand(t);
+    if (QDir::isRelativePath(t))
+        return {};
+    const QFileInfo fi(QDir::cleanPath(t));
+    return fi.isDir() ? fi.absoluteFilePath() : QString();
+}
+
+QVariantMap FileOps::properties(const QString &path) const
+{
+    const QFileInfo fi(path);
+    QVariantMap m;
+    const auto mime = QMimeDatabase().mimeTypeForFile(path);
+    m["name"] = fi.fileName().isEmpty() ? path : fi.fileName();
+    m["path"] = fi.absoluteFilePath();
+    m["location"] = Config::contract(fi.absolutePath());
+    m["type"] = fi.isDir() ? QStringLiteral("Pasta") : mime.comment();
+    m["mime"] = fi.isDir() ? QStringLiteral("inode/directory") : mime.name();
+    m["isDir"] = fi.isDir() && !fi.isSymLink();
+    m["isSymlink"] = fi.isSymLink();
+    m["target"] = fi.isSymLink() ? fi.symLinkTarget() : QString();
+    m["size"] = fi.size();
+    m["modified"] = fi.lastModified();
+    m["accessed"] = fi.lastRead();
+    m["created"] = fi.birthTime();
+    m["owner"] = fi.owner();
+    m["group"] = fi.group();
+    m["permString"] = permString(fi.permissions());
+    m["mode"] = permMode(fi.permissions());
+    m["writable"] = fi.isWritable();
+    m["hidden"] = fi.isHidden();
+    return m;
+}
+
+bool FileOps::setPermissions(const QString &path, int mode)
+{
+    QFileDevice::Permissions p;
+    if (mode & 0400) p |= QFileDevice::ReadOwner;
+    if (mode & 0200) p |= QFileDevice::WriteOwner;
+    if (mode & 0100) p |= QFileDevice::ExeOwner;
+    if (mode & 040) p |= QFileDevice::ReadGroup;
+    if (mode & 020) p |= QFileDevice::WriteGroup;
+    if (mode & 010) p |= QFileDevice::ExeGroup;
+    if (mode & 04) p |= QFileDevice::ReadOther;
+    if (mode & 02) p |= QFileDevice::WriteOther;
+    if (mode & 01) p |= QFileDevice::ExeOther;
+    if (QFile::setPermissions(path, p))
+        return true;
+    emit errorOccurred(QStringLiteral("Não foi possível alterar as permissões"));
+    return false;
+}
+
+void FileOps::computeSize(const QStringList &paths)
+{
+    QPointer<FileOps> self(this);
+    (void)QtConcurrent::run([self, paths] {
+        qint64 bytes = 0;
+        int files = 0, folders = 0;
+        for (const auto &p : paths) {
+            const QFileInfo fi(p);
+            if (fi.isSymLink() || !fi.isDir()) {
+                bytes += fi.size();
+                ++files;
+                continue;
+            }
+            QDirIterator it(p, QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System,
+                            QDirIterator::Subdirectories);
+            while (it.hasNext()) {
+                it.next();
+                const auto f = it.fileInfo();
+                if (f.isDir() && !f.isSymLink()) ++folders;
+                else { ++files; bytes += f.size(); }
+            }
+        }
+        QMetaObject::invokeMethod(qApp, [self, bytes, files, folders] {
+            if (self)
+                emit self->sizeComputed(bytes, files, folders);
+        }, Qt::QueuedConnection);
+    });
 }

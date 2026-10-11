@@ -7,23 +7,10 @@
 #include <QStandardPaths>
 
 namespace {
-QString xdg(QStandardPaths::StandardLocation loc)
-{
-    return QStandardPaths::writableLocation(loc);
-}
-
 QJsonObject defaults()
 {
-    auto fav = [](const QString &name, const QString &path, const QString &icon) {
-        return QJsonObject{{"name", name}, {"path", path}, {"icon", icon}};
-    };
     return QJsonObject{
-        {"favorites", QJsonArray{
-             fav("Downloads", Config::contract(xdg(QStandardPaths::DownloadLocation)), "folder-download-symbolic"),
-             fav("Documentos", Config::contract(xdg(QStandardPaths::DocumentsLocation)), "folder-documents-symbolic"),
-             fav("Desktop", Config::contract(xdg(QStandardPaths::DesktopLocation)), "user-desktop-symbolic"),
-             fav("Aplicativos", "/usr/share/applications", "view-app-grid-symbolic"),
-         }},
+        {"favorites", QJsonArray{}}, // só os adicionados pelo usuário; as pastas principais são fixas
         {"iconTheme", ""},
         {"showHidden", false},
         {"groupByDate", true},

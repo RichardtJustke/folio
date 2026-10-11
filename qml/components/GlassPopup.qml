@@ -8,7 +8,7 @@ Popup {
     modal: true
     dim: true
     padding: 20
-    width: 400
+    width: Math.min(400, Overlay.overlay ? Overlay.overlay.width - 40 : 400)
     closePolicy: Popup.CloseOnEscape
 
     background: Rectangle {

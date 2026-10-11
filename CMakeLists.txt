@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
-project(folio VERSION 0.1.0 LANGUAGES CXX)
+project(folio VERSION 0.2.0 LANGUAGES CXX)
+set(FOLIO_VERSION_STRING "0.2")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -27,10 +28,18 @@ qt_add_qml_module(folio
         src/FileOps.h src/FileOps.cpp
         src/PlacesModel.h src/PlacesModel.cpp
         src/Config.h src/Config.cpp
+        src/Settings.h src/Settings.cpp
     QML_FILES
         qml/Main.qml
         qml/Theme.qml
-        qml/components/TrafficLights.qml
+        qml/components/WindowControls.qml
+        qml/components/PathBar.qml
+        qml/components/SettingsPage.qml
+        qml/components/PropertiesDialog.qml
+        qml/components/OpenWithDialog.qml
+        qml/components/PromptDialog.qml
+        qml/components/ConnectDialog.qml
+        qml/components/ListPickerDialog.qml
         qml/components/Sidebar.qml
         qml/components/SidebarItem.qml
         qml/components/NavPill.qml
@@ -57,9 +66,11 @@ qt_add_qml_module(folio
         qml/components/RenameField.qml
     RESOURCES
         assets/folder.svg
+        assets/folio.svg
 )
 
 target_include_directories(folio PRIVATE src)
+target_compile_definitions(folio PRIVATE FOLIO_VERSION="${FOLIO_VERSION_STRING}")
 
 target_link_libraries(folio PRIVATE
     Qt6::Core Qt6::Gui Qt6::Quick Qt6::QuickControls2 Qt6::Concurrent Qt6::Svg
@@ -68,3 +79,4 @@ target_link_libraries(folio PRIVATE
 include(GNUInstallDirs)
 install(TARGETS folio RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES dist/folio.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+install(FILES assets/folio.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)

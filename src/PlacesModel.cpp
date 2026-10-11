@@ -3,6 +3,7 @@
 #include "Config.h"
 
 #include <QDir>
+#include <algorithm>
 #include <QJsonArray>
 #include <QProcess>
 #include <QStandardPaths>
@@ -65,17 +66,44 @@ QHash<int, QByteArray> PlacesModel::roleNames() const
 void PlacesModel::refresh()
 {
     beginResetModel();
-    m_places = loadFavorites() + loadVolumes();
+    m_places = loadStandard() + loadFavorites() + loadVolumes();
     endResetModel();
+}
+
+// Pastas principais: sempre presentes; criadas se não existirem.
+QList<PlacesModel::Place> PlacesModel::loadStandard() const
+{
+    struct Std { QStandardPaths::StandardLocation loc; const char *name; const char *icon; const char *folder; };
+    const Std defs[] = {
+        {QStandardPaths::DesktopLocation, "Área de Trabalho", "user-desktop-symbolic", "Desktop"},
+        {QStandardPaths::DownloadLocation, "Downloads", "folder-download-symbolic", "Downloads"},
+        {QStandardPaths::DocumentsLocation, "Documentos", "folder-documents-symbolic", "Documents"},
+        {QStandardPaths::PicturesLocation, "Imagens", "folder-pictures-symbolic", "Pictures"},
+        {QStandardPaths::MoviesLocation, "Vídeos", "folder-videos-symbolic", "Videos"},
+    };
+    QList<Place> out;
+    const QString group = QStringLiteral("Favoritos");
+    for (const auto &d : defs) {
+        auto path = QStandardPaths::writableLocation(d.loc);
+        if (path.isEmpty() || path == QDir::homePath())
+            path = QDir::homePath() + "/" + d.folder;
+        QDir().mkpath(path);
+        out.append({QString::fromUtf8(d.name), QDir::cleanPath(path), QString::fromLatin1(d.icon), group, {}, false, false});
+    }
+    return out;
 }
 
 QList<PlacesModel::Place> PlacesModel::loadFavorites() const
 {
     QList<Place> out;
+    const auto standard = loadStandard();
     const auto arr = Config::load().value("favorites").toArray();
     for (const auto &v : arr) {
         const auto o = v.toObject();
         const auto path = QDir::cleanPath(Config::expand(o.value("path").toString()));
+        const bool dup = std::any_of(standard.begin(), standard.end(), [&](const Place &s) { return s.path == path; });
+        if (dup)
+            continue;
         auto name = o.value("name").toString();
         if (name.isEmpty())
             name = QFileInfo(path).fileName();
@@ -88,8 +116,13 @@ QList<PlacesModel::Place> PlacesModel::loadVolumes() const
 {
     const QString group = QStringLiteral("Locais");
     QList<Place> out;
-    out.append({qEnvironmentVariable("USER", "Início"), QDir::homePath(), "user-home-symbolic", group, {}, false, false});
-    out.append({QStringLiteral("Computador"), "/", "drive-harddisk-symbolic", group, {}, false, false});
+    const QString fav = QStringLiteral("Favoritos");
+    const auto trash = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "/Trash/files";
+    QDir().mkpath(trash);
+    out.append({QStringLiteral("Lixeira"), trash, "user-trash-symbolic", fav, {}, false, false});
+
+    out.append({QStringLiteral("Início"), QDir::homePath(), "user-home-symbolic", group, {}, false, false});
+    out.append({QStringLiteral("Computador"), "/", "computer-symbolic,drive-harddisk-symbolic", group, {}, false, false});
 
     for (const auto &v : QStorageInfo::mountedVolumes()) {
         if (!v.isValid() || !v.isReady() || !isUserVolume(v))
@@ -104,16 +137,15 @@ QList<PlacesModel::Place> PlacesModel::loadVolumes() const
                     group, QString::fromLocal8Bit(v.device()), removable, false});
     }
 
-    const auto trash = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "/Trash/files";
-    QDir().mkpath(trash);
-    out.append({QStringLiteral("Lixeira"), trash, "user-trash-symbolic", group, {}, false, false});
+    out.append({QStringLiteral("Rede"), QStringLiteral("folio:network"),
+                "network-workgroup-symbolic,folder-remote-symbolic", group, {}, false, false});
     return out;
 }
 
 bool PlacesModel::isFavorite(const QString &path) const
 {
     for (const auto &p : m_places)
-        if (p.favorite && p.path == path)
+        if (p.path == path && p.group == QLatin1String("Favoritos"))
             return true;
     return false;
 }
