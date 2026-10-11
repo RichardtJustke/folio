@@ -44,7 +44,6 @@ jobs:
           QML_SOURCES_PATHS: ${{ github.workspace }}/qml
           EXTRA_PLATFORM_PLUGINS: libqwayland-generic.so;libqwayland-egl.so
           DEPLOY_PLATFORM_THEMES: "1"
-          EXTRA_QT_PLUGINS: wayland-shell-integration;wayland-graphic-integration-client;wayland-decoration-client;iconengines;imageformats
           LDAI_OUTPUT: Folio-x86_64.AppImage
         run: |
           curl -fsSL -O https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20250213-2/linuxdeploy-x86_64.AppImage
@@ -53,9 +52,14 @@ jobs:
           export PATH="$PWD:$PATH"
           export QMAKE="$QT_ROOT_DIR/bin/qmake"
           ls -la "$QMAKE"
-          ./linuxdeploy-x86_64.AppImage --appdir AppDir \
-            --desktop-file AppDir/usr/share/applications/folio.desktop \
-            --plugin qt --output appimage
+          DESKTOP=AppDir/usr/share/applications/folio.desktop
+          ./linuxdeploy-x86_64.AppImage --appdir AppDir --desktop-file "$DESKTOP" --plugin qt
+          # o plugin do Qt não leva a integração com o compositor Wayland: copia à mão
+          ls "$QT_ROOT_DIR/plugins" | tr '\n' ' '; echo
+          for d in wayland-shell-integration wayland-graphic-integration-client wayland-decoration-client; do
+            cp -r "$QT_ROOT_DIR/plugins/$d" AppDir/usr/plugins/
+          done
+          ./linuxdeploy-x86_64.AppImage --appdir AppDir --desktop-file "$DESKTOP" --output appimage
           ls -la *.AppImage
           # o app precisa dos plugins do Wayland dentro do pacote
           for d in wayland-shell-integration wayland-graphic-integration-client wayland-decoration-client; do
