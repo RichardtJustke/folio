@@ -1,0 +1,42 @@
+# Maintainer: Richardt Justke <rj.justke@gmail.com>
+# Pacote binário (o código-fonte do Folio não é público): usa o AppImage das releases.
+pkgname=folio-bin
+_pkgname=folio
+pkgver=0.4
+pkgrel=1
+pkgdesc="Gerenciador de arquivos estilo Finder para Wayland (Qt 6/QML) — binário"
+arch=('x86_64')
+url="https://github.com/RichardtJustke/folio-releases"
+license=('custom')
+depends=('fuse2' 'xdg-utils' 'zlib')
+optdepends=('gvfs: conectar a servidores SSH/SFTP' 'udisks2: ejetar drives' 'ffmpegthumbnailer: miniaturas de vídeo')
+provides=('folio')
+conflicts=('folio')
+options=('!strip')
+_rel="$url/releases/download/v${pkgver}-alpha"
+source=("Folio-$pkgver.AppImage::$_rel/Folio-x86_64.AppImage"
+        "folio-$pkgver.svg::$_rel/folio.svg")
+sha256sums=('SKIP' 'SKIP') # troque pelos hashes reais a cada versão (updpkgsums)
+noextract=("Folio-$pkgver.AppImage")
+
+package() {
+  install -Dm755 "$srcdir/Folio-$pkgver.AppImage" "$pkgdir/opt/$_pkgname/Folio.AppImage"
+  install -d "$pkgdir/usr/bin"
+  ln -s "/opt/$_pkgname/Folio.AppImage" "$pkgdir/usr/bin/folio"
+  install -Dm644 "$srcdir/folio-$pkgver.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/folio.svg"
+  install -d "$pkgdir/usr/share/applications"
+  cat > "$pkgdir/usr/share/applications/folio.desktop" <<DESK
+[Desktop Entry]
+Type=Application
+Name=Folio
+GenericName=Gerenciador de arquivos
+Comment=Navegue pelos seus arquivos
+Exec=folio %u
+Icon=folio
+Terminal=false
+Categories=System;FileTools;FileManager;Utility;Core;Qt;
+MimeType=inode/directory;
+StartupWMClass=folio
+Keywords=arquivos;pastas;files;folders;
+DESK
+}
