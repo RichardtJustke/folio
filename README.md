@@ -104,6 +104,7 @@ Favoritos também via menu de contexto (“Adicionar aos Favoritos” / “Remov
 | Ctrl+1 / Ctrl+2 | Ícones / lista |
 | Ctrl+H | Mostrar/ocultar ocultos |
 | Ctrl+T / Ctrl+W / Ctrl+Tab | Nova aba / fechar aba / próxima aba |
+| Ctrl+\ / F6 | Dividir a janela (duas abas lado a lado) |
 | Clique do meio numa pasta | Abrir em nova aba |
 | Ctrl+A, setas, Shift+setas, Ctrl/Shift+clique, arrastar no vazio | Seleção |
 | Arrastar com Ctrl / Shift | Forçar cópia / forçar mover |

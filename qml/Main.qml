@@ -80,16 +80,48 @@ Window {
     readonly property FileModel fm: tab ? tab.fileModel : null
     readonly property Navigator nav: tab ? tab.navigator : null
 
+    // divisão: duas abas lado a lado (a aba ativa é a do painel em foco)
+    property int splitLeft: -1
+    property int splitRight: -1
+    readonly property bool split: splitLeft >= 0 && splitRight >= 0
+
+    // escolher uma aba sempre sai das Configurações; em divisão, a aba nova ocupa o painel ativo
+    function selectTab(i) {
+        settingsOpen = false
+        if (split && i !== splitLeft && i !== splitRight) {
+            if (currentTab === splitRight) splitRight = i
+            else splitLeft = i
+        }
+        currentTab = i
+        Qt.callLater(focusView)
+    }
+
     function newTab(path) {
         tabs.append({ startPath: path, title: "" })
-        currentTab = tabs.count - 1
+        selectTab(tabs.count - 1)
     }
 
     function closeTab(i) {
         if (tabs.count <= 1) { win.close(); return }
         const next = i < currentTab || (i === currentTab && i === tabs.count - 1) ? currentTab - 1 : currentTab
+        let l = splitLeft, r = splitRight
+        if (i === l || i === r) { l = -1; r = -1 }
+        else { if (l > i) l--; if (r > i) r-- }
         tabs.remove(i)
+        splitLeft = l
+        splitRight = r
         currentTab = next
+    }
+
+    function toggleSplit() {
+        settingsOpen = false
+        if (split) { splitLeft = -1; splitRight = -1; return }
+        const cur = currentTab
+        if (tabs.count < 2) tabs.append({ startPath: fm ? fm.path : fileOps.startPath(), title: "" })
+        const other = cur === tabs.count - 1 ? cur - 1 : cur + 1
+        splitLeft = Math.min(cur, other)
+        splitRight = Math.max(cur, other)
+        currentTab = cur
     }
 
     function focusView() { if (tab) tab.view.forceActiveFocus() }
@@ -156,6 +188,7 @@ Window {
                 else toast.show("Pasta não encontrada", true)
             })
             onNavigate: path => {
+                win.settingsOpen = false
                 if (path !== "folio:network") { win.nav.go(path); return }
                 if (fileOps.hasNetworkMounts()) win.nav.go(fileOps.networkDir())
                 else connectDialog.show()
@@ -191,11 +224,15 @@ Window {
         TabStrip {
             id: tabStrip
             anchors { left: sidebar.right; right: parent.right; top: header.bottom }
-            visible: tabs.count > 1
-            height: visible ? 34 : 0
+            height: 34
             tabs: tabs
             currentIndex: win.currentTab
-            onSelected: i => win.currentTab = i
+            splitActive: win.split
+            splitLeft: win.splitLeft
+            splitRight: win.splitRight
+            onNewTab: win.newTab(win.fm ? win.fm.path : fileOps.startPath())
+            onToggleSplit: win.toggleSplit()
+            onSelected: i => win.selectTab(i)
             onClosed: i => win.closeTab(i)
             onDropped: (d, i) => {
                 if (!d.hasUrls) return
@@ -211,10 +248,17 @@ Window {
             color: Theme.contentBacking
         }
 
-        StackLayout {
+        Item { // painéis: uma aba, ou duas lado a lado (divisão)
+            id: paneArea
             visible: !win.settingsOpen // com Configurações aberta, a vista de arquivos some (não vaza por trás do vidro)
-            anchors { left: sidebar.right; right: parent.right; top: tabStrip.bottom; bottom: parent.bottom; leftMargin: 4 }
-            currentIndex: win.currentTab
+            anchors {
+                left: sidebar.right; right: parent.right; top: tabStrip.bottom; bottom: parent.bottom
+                leftMargin: 4; rightMargin: win.split ? 6 : 0; bottomMargin: win.split ? 6 : 0
+            }
+            readonly property bool vertical: width < 640 // janela estreita: painéis um sobre o outro
+            readonly property int gap: 10
+            property real ratio: 0.5
+            readonly property real firstSize: Math.round(((vertical ? height : width) - gap) * ratio)
 
             Repeater {
                 id: tabRepeater
@@ -222,6 +266,17 @@ Window {
                 onItemAdded: (i, item) => { const t = win.tabItems.slice(); t.splice(i, 0, item); win.tabItems = t }
                 onItemRemoved: (i, item) => { const t = win.tabItems.slice(); t.splice(i, 1); win.tabItems = t }
                 BrowserTab {
+                    id: pane
+                    readonly property bool isRight: win.split && index === win.splitRight
+                    visible: win.split ? (index === win.splitLeft || isRight) : index === win.currentTab
+                    x: isRight && !paneArea.vertical ? paneArea.firstSize + paneArea.gap : 0
+                    y: isRight && paneArea.vertical ? paneArea.firstSize + paneArea.gap : 0
+                    width: win.split && !paneArea.vertical
+                           ? (isRight ? paneArea.width - paneArea.firstSize - paneArea.gap : paneArea.firstSize)
+                           : paneArea.width
+                    height: win.split && paneArea.vertical
+                            ? (isRight ? paneArea.height - paneArea.firstSize - paneArea.gap : paneArea.firstSize)
+                            : paneArea.height
                     ops: fileOps
                     places: placesModel
                     onOpenInNewTab: path => win.newTab(path)
@@ -232,6 +287,52 @@ Window {
                     onShowProperties: paths => win.showProperties(paths)
                     onOpenWith: path => openWithDialog.show(path)
                     onPromptSelectPattern: win.promptSelectPattern()
+
+                    // clicar num painel o torna o ativo (é o que o cabeçalho e os atalhos controlam)
+                    Connections {
+                        target: pane.view
+                        function onActiveFocusChanged() {
+                            if (pane.view.activeFocus && !win.settingsOpen) win.currentTab = pane.index
+                        }
+                    }
+                    Rectangle { // contorno do painel (só em divisão)
+                        anchors.fill: parent
+                        z: 5
+                        visible: win.split
+                        color: "transparent"
+                        radius: Theme.radius - 4
+                        border.width: 1
+                        border.color: pane.index === win.currentTab ? Theme.tint(Theme.accent, 0.55) : Theme.border
+                    }
+                }
+            }
+
+            Item { // divisor arrastável (duplo clique: 50/50)
+                visible: win.split
+                x: paneArea.vertical ? 0 : paneArea.firstSize
+                y: paneArea.vertical ? paneArea.firstSize : 0
+                width: paneArea.vertical ? paneArea.width : paneArea.gap
+                height: paneArea.vertical ? paneArea.gap : paneArea.height
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: paneArea.vertical ? 44 : 3
+                    height: paneArea.vertical ? 3 : 44
+                    radius: 2
+                    color: dividerArea.containsMouse || dividerArea.pressed ? Theme.accent : Theme.borderStrong
+                }
+                MouseArea {
+                    id: dividerArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: paneArea.vertical ? Qt.SplitVCursor : Qt.SplitHCursor
+                    onPositionChanged: e => {
+                        if (!pressed) return
+                        const p = mapToItem(paneArea, e.x, e.y)
+                        const total = (paneArea.vertical ? paneArea.height : paneArea.width) - paneArea.gap
+                        const v = (paneArea.vertical ? p.y : p.x) - paneArea.gap / 2
+                        paneArea.ratio = Math.max(0.25, Math.min(0.75, v / total))
+                    }
+                    onDoubleClicked: paneArea.ratio = 0.5
                 }
             }
         }
@@ -239,7 +340,7 @@ Window {
             id: settingsPage
             ops: fileOps
             visible: win.settingsOpen
-            anchors { left: sidebar.right; right: parent.right; top: header.bottom; bottom: parent.bottom; margins: 6; leftMargin: 4 }
+            anchors { left: sidebar.right; right: parent.right; top: tabStrip.bottom; bottom: parent.bottom; margins: 6; leftMargin: 4; topMargin: 2 }
             onClosed: win.settingsOpen = false
         }
     }
@@ -307,11 +408,12 @@ Window {
     Shortcut { sequence: "Ctrl+2"; enabled: win.ready; onActivated: fm.viewMode = "list" }
     Shortcut { sequence: "Ctrl+T"; onActivated: win.newTab(fm ? fm.path : fileOps.startPath()) }
     Shortcut { sequence: "Ctrl+W"; onActivated: win.closeTab(win.currentTab) }
-    Shortcut { sequence: "Ctrl+Tab"; enabled: tabs.count > 1; onActivated: win.currentTab = (win.currentTab + 1) % tabs.count }
+    Shortcut { sequences: ["Ctrl+\\", "F6"]; onActivated: win.toggleSplit() }
+    Shortcut { sequence: "Ctrl+Tab"; enabled: tabs.count > 1; onActivated: win.selectTab((win.currentTab + 1) % tabs.count) }
     Shortcut {
         sequence: "Ctrl+Shift+Tab"
         enabled: tabs.count > 1
-        onActivated: win.currentTab = (win.currentTab - 1 + tabs.count) % tabs.count
+        onActivated: win.selectTab((win.currentTab - 1 + tabs.count) % tabs.count)
     }
     Shortcut { sequences: [StandardKey.Quit]; onActivated: win.close() }
 }

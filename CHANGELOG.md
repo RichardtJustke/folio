@@ -2,6 +2,12 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.3
+- Abas sempre visíveis, com botão "+" de nova aba; cada aba tem a sua própria pasta e histórico.
+- Divisão da janela: duas abas lado a lado (botão na tira de abas, `Ctrl+\` ou `F6`); divisor arrastável (duplo clique = 50/50); em janela estreita os painéis ficam um sobre o outro.
+- Clicar numa aba ou numa pasta da barra lateral fecha as Configurações e vai para ela.
+- `docs/animacoes.html`: prévia interativa das animações propostas (ainda não aplicadas no app).
+
 ## Alpha 0.2
 - Controles da janela sem minimizar (maximizar + fechar); 3 cliques no topo = tela cheia, 2 = maximizar.
 - Menus, diálogos e a página de Configurações seguem a transparência da janela.
