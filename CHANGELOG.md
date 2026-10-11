@@ -2,6 +2,9 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.7
+- Corrige o app que aparecia no launcher/menu de apps mas não abria: ao instalar fora de `/usr` (ex.: `--prefix ~/.local`), o `folio.desktop` agora leva o caminho absoluto do binário, já que `~/.local/bin` não está no PATH de launchers como o quickshell.
+
 ## Alpha 0.6
 - Pacote de ícones embutido (`assets/icons`, 40+ SVGs no estilo da logo): barra lateral, barra de ferramentas, menus e ícones genéricos de arquivo ficam iguais em qualquer sistema/AppImage, sem depender do tema de ícones instalado. O tema do sistema continua valendo para ícones específicos de tipos de arquivo.
 

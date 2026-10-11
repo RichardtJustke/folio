@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
-project(folio VERSION 0.6.0 LANGUAGES CXX)
-set(FOLIO_VERSION_STRING "0.6")
+project(folio VERSION 0.7.0 LANGUAGES CXX)
+set(FOLIO_VERSION_STRING "0.7")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -85,4 +85,15 @@ target_link_libraries(folio PRIVATE
 include(GNUInstallDirs)
 install(TARGETS folio RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES dist/folio.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+# Fora de /usr o ~/.local/bin não está no PATH de launchers (quickshell, rofi, portais...):
+# o .desktop instalado leva o caminho absoluto, senão o app aparece na lista mas não abre.
+install(CODE "
+    set(_prefix \"\${CMAKE_INSTALL_PREFIX}\")
+    if(NOT _prefix MATCHES \"^/usr(/|\$)\")
+        set(_desktop \"\$ENV{DESTDIR}\${_prefix}/${CMAKE_INSTALL_DATADIR}/applications/folio.desktop\")
+        file(READ \"\${_desktop}\" _content)
+        string(REPLACE \"Exec=folio \" \"Exec=\${_prefix}/${CMAKE_INSTALL_BINDIR}/folio \" _content \"\${_content}\")
+        file(WRITE \"\${_desktop}\" \"\${_content}\")
+    endif()
+")
 install(FILES assets/folio.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
