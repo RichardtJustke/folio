@@ -2,6 +2,9 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.5
+- Nova logo: pasta azul com aba de vidro fosco e duas folhas saindo (a da frente com canto dobrado) (`assets/folio.svg`), substituindo a folha genérica.
+
 ## Alpha 0.4
 - Animações em toda a interface, iguais com a barra lateral completa, compacta ou oculta:
   - Excluir: os itens voam até a Lixeira (que pulsa); esvaziar a Lixeira solta partículas; exclusão permanente encolhe no lugar.
