@@ -41,7 +41,6 @@ jobs:
       - name: Empacotar AppImage
         env:
           APPIMAGE_EXTRACT_AND_RUN: "1"
-          QMAKE: ${{ env.Qt6_DIR }}/bin/qmake
           QML_SOURCES_PATHS: ${{ github.workspace }}/qml
           EXTRA_PLATFORM_PLUGINS: libqwayland-generic.so;libqwayland-egl.so
           DEPLOY_PLATFORM_THEMES: "1"
@@ -51,6 +50,8 @@ jobs:
           curl -fsSL -O https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/1-alpha-20250213-1/linuxdeploy-plugin-qt-x86_64.AppImage
           chmod +x linuxdeploy-*.AppImage
           export PATH="$PWD:$PATH"
+          export QMAKE="$QT_ROOT_DIR/bin/qmake"
+          ls -la "$QMAKE"
           ./linuxdeploy-x86_64.AppImage --appdir AppDir \
             --desktop-file AppDir/usr/share/applications/folio.desktop \
             --plugin qt --output appimage
