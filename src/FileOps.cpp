@@ -221,6 +221,16 @@ QString FileOps::startPath() const
     return QDir::homePath();
 }
 
+QString FileOps::startReveal() const
+{
+    const auto args = QCoreApplication::arguments();
+    if (args.size() < 2)
+        return {};
+    const auto arg = args.at(1);
+    QFileInfo fi(arg.startsWith("file://") ? QUrl(arg).toLocalFile() : Config::expand(arg));
+    return fi.exists() && !fi.isDir() ? fi.absoluteFilePath() : QString();
+}
+
 bool FileOps::canPaste() const
 {
     const auto *md = QGuiApplication::clipboard()->mimeData();

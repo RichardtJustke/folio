@@ -14,7 +14,7 @@
 #include <QtGlobal>
 
 #ifndef FOLIO_VERSION
-#define FOLIO_VERSION "0.7"
+#define FOLIO_VERSION "0.8"
 #endif
 
 Settings::Settings(QObject *parent) : QObject(parent)

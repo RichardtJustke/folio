@@ -3,10 +3,12 @@
 #include <QJsonObject>
 #include <QProcess>
 #include <QQmlApplicationEngine>
+#include <QQmlContext>
 #include <QQuickStyle>
 #include <QQuickWindow>
 
 #include "Config.h"
+#include "FileManager1.h"
 #include "IconProvider.h"
 #include "Thumbnailer.h"
 #include <QDir>
@@ -43,10 +45,14 @@ int main(int argc, char *argv[])
     Thumbnailer::init();
 
     QQmlApplicationEngine engine;
+    // Antes do QML: o Main.qml liga os sinais assim que é criado
+    auto *fileManager1 = new FileManager1(&app);
+    engine.rootContext()->setContextProperty("fileManager1", fileManager1);
     engine.addImageProvider("icon", new IconProvider);
     engine.addImageProvider("thumb", new ThumbnailProvider);
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app,
                      [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
     engine.loadFromModule("Folio", "Main");
+    fileManager1->registerOnBus();
     return app.exec();
 }

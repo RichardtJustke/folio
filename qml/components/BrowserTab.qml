@@ -7,6 +7,7 @@ Item {
 
     required property int index
     required property string startPath
+    required property string revealPath // item a selecionar ao abrir
     required property FileOps ops
     required property PlacesModel places
 
@@ -65,7 +66,10 @@ Item {
         }
     }
 
-    Component.onCompleted: nav.reset(startPath)
+    Component.onCompleted: {
+        nav.reset(startPath)
+        if (revealPath) fm.selectPath(revealPath)
+    }
     onIndexChanged: titleUpdated(index, fm.title)
 
     FileGrid {

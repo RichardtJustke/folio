@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.21)
-project(folio VERSION 0.7.0 LANGUAGES CXX)
-set(FOLIO_VERSION_STRING "0.7")
+project(folio VERSION 0.8.0 LANGUAGES CXX)
+set(FOLIO_VERSION_STRING "0.8")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Quick QuickControls2 Concurrent Svg)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Quick QuickControls2 Concurrent Svg DBus)
 qt_standard_project_setup(REQUIRES 6.5)
 qt_policy(SET QTP0004 NEW)
 
@@ -13,6 +13,7 @@ qt_add_executable(folio
     src/main.cpp
     src/IconProvider.h src/IconProvider.cpp
     src/Thumbnailer.h src/Thumbnailer.cpp
+    src/FileManager1.h src/FileManager1.cpp
 )
 
 set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
@@ -79,7 +80,7 @@ target_include_directories(folio PRIVATE src)
 target_compile_definitions(folio PRIVATE FOLIO_VERSION="${FOLIO_VERSION_STRING}")
 
 target_link_libraries(folio PRIVATE
-    Qt6::Core Qt6::Gui Qt6::Quick Qt6::QuickControls2 Qt6::Concurrent Qt6::Svg
+    Qt6::Core Qt6::Gui Qt6::Quick Qt6::QuickControls2 Qt6::Concurrent Qt6::Svg Qt6::DBus
 )
 
 include(GNUInstallDirs)
@@ -94,6 +95,11 @@ install(CODE "
         file(READ \"\${_desktop}\" _content)
         string(REPLACE \"Exec=folio \" \"Exec=\${_prefix}/${CMAKE_INSTALL_BINDIR}/folio \" _content \"\${_content}\")
         file(WRITE \"\${_desktop}\" \"\${_content}\")
+        # \"Mostrar na pasta\" dos outros apps (D-Bus FileManager1) abre o Folio. Só fora de /usr:
+        # lá o arquivo do nautilus/dolphin tem o mesmo nome, e o de ~/.local tem precedência.
+        set(_service \"\$ENV{DESTDIR}\${_prefix}/${CMAKE_INSTALL_DATADIR}/dbus-1/services/org.freedesktop.FileManager1.service\")
+        message(STATUS \"Installing: \${_service}\")
+        file(WRITE \"\${_service}\" \"[D-BUS Service]\\nName=org.freedesktop.FileManager1\\nExec=\${_prefix}/${CMAKE_INSTALL_BINDIR}/folio --dbus-service\\n\")
     endif()
 ")
 install(FILES assets/folio.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)

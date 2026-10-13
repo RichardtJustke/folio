@@ -2,6 +2,11 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.8
+- "Mostrar na pasta" de navegadores e outros apps abre o Folio: implementa `org.freedesktop.FileManager1` no D-Bus (`ShowFolders`, `ShowItems` com o arquivo selecionado, `ShowItemProperties`). Com o Folio aberto vira uma aba nova na janela; fechado, o D-Bus o inicia (`folio --dbus-service`). A instalação fora de `/usr` grava `~/.local/share/dbus-1/services/org.freedesktop.FileManager1.service`, que tem precedência sobre o do Nautilus/Dolphin.
+- `folio /caminho/arquivo` abre a pasta com o arquivo selecionado.
+- `hypr/folio.lua`: SUPER+E com caminho absoluto (o PATH do Hyprland não inclui `~/.local/bin`, e o atalho não abria nada).
+
 ## Alpha 0.7
 - Corrige o app que aparecia no launcher/menu de apps mas não abria: ao instalar fora de `/usr` (ex.: `--prefix ~/.local`), o `folio.desktop` agora leva o caminho absoluto do binário, já que `~/.local/bin` não está no PATH de launchers como o quickshell.
 

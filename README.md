@@ -58,6 +58,8 @@ cmake --build build
 
 cmake --install build --prefix ~/.local   # binário em ~/.local/bin, .desktop em ~/.local/share/applications
 xdg-mime default folio.desktop inode/directory   # opcional: gerenciador padrão
+# ~/.local também instala o serviço D-Bus FileManager1: "Mostrar na pasta" dos outros apps abre o Folio
+busctl --user call org.freedesktop.DBus / org.freedesktop.DBus ReloadConfig   # aplica sem relogar
 ```
 
 Ou como pacote: `makepkg -si` na raiz do projeto.

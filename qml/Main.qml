@@ -10,7 +10,8 @@ Window {
     height: 700
     minimumWidth: 320
     minimumHeight: 260
-    visible: true
+    // aberto pelo D-Bus ("Mostrar na pasta"): a janela só aparece no primeiro pedido
+    visible: !Qt.application.arguments.includes("--dbus-service")
     color: "transparent"
     flags: Qt.Window | Qt.FramelessWindowHint
     title: fm ? fm.title : "Folio"
@@ -72,7 +73,7 @@ Window {
     function zoom(delta) { Settings.iconSize = Settings.iconSize + delta }
 
     // ── abas ──
-    ListModel { id: tabs } // { startPath, title }
+    ListModel { id: tabs } // { startPath, revealPath, title }
     property int currentTab: 0
     // itemAt() ainda retorna null durante itemAdded; guardamos as abas a partir dos sinais
     property var tabItems: []
@@ -96,8 +97,8 @@ Window {
         Qt.callLater(focusView)
     }
 
-    function newTab(path) {
-        tabs.append({ startPath: path, title: "" })
+    function newTab(path, reveal) {
+        tabs.append({ startPath: path, revealPath: reveal ?? "", title: "" })
         selectTab(tabs.count - 1)
     }
 
@@ -117,7 +118,7 @@ Window {
         settingsOpen = false
         if (split) { splitLeft = -1; splitRight = -1; return }
         const cur = currentTab
-        if (tabs.count < 2) tabs.append({ startPath: fm ? fm.path : fileOps.startPath(), title: "" })
+        if (tabs.count < 2) tabs.append({ startPath: fm ? fm.path : fileOps.startPath(), revealPath: "", title: "" })
         const other = cur === tabs.count - 1 ? cur - 1 : cur + 1
         splitLeft = Math.min(cur, other)
         splitRight = Math.max(cur, other)
@@ -128,8 +129,31 @@ Window {
 
     onCurrentTabChanged: Qt.callLater(focusView)
     Component.onCompleted: {
-        newTab(fileOps.startPath())
+        newTab(fileOps.startPath(), fileOps.startReveal())
         if (Qt.application.arguments.includes("--settings")) settingsOpen = true
+    }
+
+    // "Mostrar na pasta" de outros apps (org.freedesktop.FileManager1)
+    Connections {
+        target: fileManager1
+        function onOpenRequested(folder, reveal) {
+            if (!win.visible) {
+                // a aba inicial ainda não foi vista: reaproveita
+                win.nav.reset(folder)
+                if (reveal) win.fm.selectPath(reveal)
+                win.show()
+            } else {
+                win.newTab(folder, reveal)
+            }
+            win.raise()
+            win.requestActivate()
+        }
+        function onPropertiesRequested(paths) {
+            win.show()
+            win.raise()
+            win.requestActivate()
+            win.showProperties(paths)
+        }
     }
 
     // ── serviços compartilhados ──

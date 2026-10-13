@@ -54,6 +54,7 @@ public:
     QString trashDir() const;
 
     Q_INVOKABLE QString startPath() const; // argv[1] ou $HOME
+    Q_INVOKABLE QString startReveal() const; // argv[1] se for arquivo (abre a pasta com ele selecionado)
     Q_INVOKABLE void open(const QString &path);
     Q_INVOKABLE void openTerminal(const QString &dir);
     Q_INVOKABLE void copy(const QStringList &paths);
