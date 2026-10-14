@@ -494,7 +494,7 @@ Item {
         GlassMenuItem { text: "Inverter Seleção"; onTriggered: root.fileModel.invertSelection() }
         GlassMenuItem { text: "Selecionar por Padrão…"; onTriggered: root.promptSelectPattern() }
         Separator {}
-        GlassMenuItem { text: "Abrir Terminal Aqui"; onTriggered: root.ops.openTerminal(root.fileModel.path) }
+        GlassMenuItem { text: "Abrir Terminal Aqui"; shortcut: "F4"; onTriggered: root.ops.openTerminal(root.fileModel.path) }
         GlassMenuItem { text: "Copiar Caminho da Pasta"; onTriggered: root.ops.copyText(root.fileModel.path) }
         GlassMenuItem { text: "Propriedades"; onTriggered: root.showProperties([root.fileModel.path]) }
     }

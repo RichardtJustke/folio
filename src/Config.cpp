@@ -69,3 +69,22 @@ QString contract(const QString &p)
 }
 
 }
+
+QString Config::detectTerminal()
+{
+    const auto env = qEnvironmentVariable("TERMINAL").trimmed();
+    if (!env.isEmpty())
+        return env;
+    for (const char *t : {"xdg-terminal-exec", "kitty", "foot", "alacritty", "wezterm", "ghostty", "konsole",
+                          "gnome-terminal", "kgx", "xfce4-terminal", "tilix", "xterm"}) {
+        if (!QStandardPaths::findExecutable(QString::fromLatin1(t)).isEmpty())
+            return QString::fromLatin1(t);
+    }
+    return {};
+}
+
+QString Config::terminal()
+{
+    const auto t = load().value("terminal").toString().trimmed();
+    return t.isEmpty() ? detectTerminal() : t;
+}

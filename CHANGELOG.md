@@ -2,6 +2,10 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.12
+- F4 abre o terminal na pasta atual (na busca, na pasta do item selecionado). Os menus mostram o atalho ao lado do item.
+- Terminal detectado automaticamente quando o campo das Configurações está vazio: `$TERMINAL`, depois o primeiro instalado entre xdg-terminal-exec, kitty, foot, alacritty, wezterm, ghostty, konsole, gnome-terminal, kgx, xfce4-terminal, tilix e xterm. Sem nenhum, um aviso explica onde configurar.
+
 ## Alpha 0.11
 - Barra de caminho (clique nela ou Ctrl+L): sugestões de pastas enquanto digita; Tab completa (prefixo comum ou a sugestão escolhida), ↑/↓ escolhem, Enter entra, Esc fecha a lista. Abre já com `~/…/` e a barra no fim, pronto para continuar digitando.
 

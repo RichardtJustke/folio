@@ -327,11 +327,11 @@ Rectangle {
             }
             Line {
                 label: "Terminal"
-                hint: "Comando usado em “Abrir Terminal Aqui”. Vazio = $TERMINAL ou kitty"
+                hint: "Comando usado em “Abrir Terminal Aqui” (F4). Vazio = detectar automaticamente"
                 TextField {
                     width: 150
                     text: Settings.terminal
-                    placeholderText: "kitty"
+                    placeholderText: Settings.detectedTerminal() || "kitty"
                     placeholderTextColor: Theme.textFaint
                     color: Theme.text
                     font.pixelSize: 12

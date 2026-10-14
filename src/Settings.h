@@ -84,6 +84,7 @@ public:
     Q_INVOKABLE QStringList availableIconThemes() const;
     Q_INVOKABLE QStringList availableFonts() const;
     Q_INVOKABLE QString currentIconTheme() const;
+    Q_INVOKABLE QString detectedTerminal() const;
     Q_INVOKABLE void restart();
 
     Q_INVOKABLE void resetAppearance();

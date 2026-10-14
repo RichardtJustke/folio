@@ -263,12 +263,11 @@ void FileOps::open(const QString &path)
 
 void FileOps::openTerminal(const QString &dir)
 {
-    auto term = Config::load().value("terminal").toString().trimmed();
-    if (term.isEmpty())
-        term = qEnvironmentVariable("TERMINAL", "kitty");
-    auto args = QProcess::splitCommand(term);
-    if (args.isEmpty())
+    auto args = QProcess::splitCommand(Config::terminal());
+    if (args.isEmpty()) {
+        emit errorOccurred(tr("Nenhum terminal encontrado — defina um em Configurações → Comportamento"));
         return;
+    }
     const auto prog = args.takeFirst();
     QProcess::startDetached(prog, args, dir);
 }

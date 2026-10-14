@@ -483,6 +483,14 @@ Window {
     Shortcut { sequence: "Ctrl+Alt+N"; enabled: win.ready && !fm.isTrash; onActivated: tab.newFile() }
     Shortcut { sequence: "Ctrl+1"; enabled: win.ready; onActivated: fm.viewMode = "grid" }
     Shortcut { sequence: "Ctrl+2"; enabled: win.ready; onActivated: fm.viewMode = "list" }
+    Shortcut { // terminal na pasta atual (na busca: na pasta do item selecionado)
+        sequence: "F4"
+        enabled: fm !== null && !fm.isTrash
+        onActivated: {
+            const sel = fm.selectedPaths()
+            fileOps.openTerminal(fm.isSearch && sel.length > 0 ? fileOps.parentDir(sel[0]) : fm.path)
+        }
+    }
     Shortcut { sequence: "Ctrl+T"; onActivated: win.newTab(fm ? fm.path : fileOps.startPath()) }
     Shortcut { sequence: "Ctrl+W"; onActivated: tabStrip.requestClose(win.currentTab) }
     Shortcut { sequences: ["Ctrl+\\", "F6"]; onActivated: win.toggleSplit() }

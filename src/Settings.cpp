@@ -14,7 +14,7 @@
 #include <QtGlobal>
 
 #ifndef FOLIO_VERSION
-#define FOLIO_VERSION "0.11"
+#define FOLIO_VERSION "0.12"
 #endif
 
 Settings::Settings(QObject *parent) : QObject(parent)
@@ -92,6 +92,7 @@ void Settings::setReduceMotion(bool v) { set(m_reduceMotion, v, "reduceMotion");
 void Settings::setAnimationSpeed(qreal v) { set(m_animSpeed, qBound(0.5, v, 2.0), "animationSpeed"); }
 
 QString Settings::currentIconTheme() const { return QIcon::themeName(); }
+QString Settings::detectedTerminal() const { return Config::detectTerminal(); }
 
 QStringList Settings::availableIconThemes() const
 {
