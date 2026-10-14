@@ -555,6 +555,68 @@ QString FileOps::rename(const QString &path, const QString &newName)
     return target;
 }
 
+namespace {
+// renomeia em duas fases (tudo para nomes temporários, depois para o destino): permite trocas
+bool renamePairs(const QList<QPair<QString, QString>> &pairs)
+{
+    QList<QPair<QString, QString>> staged;
+    for (int i = 0; i < pairs.size(); ++i) {
+        const auto tmp = QFileInfo(pairs.at(i).first).absolutePath()
+                       + QStringLiteral("/.folio-rename-%1-%2").arg(QCoreApplication::applicationPid()).arg(i);
+        if (!QFile::rename(pairs.at(i).first, tmp)) {
+            for (const auto &[orig, t] : std::as_const(staged)) // volta o que já foi
+                QFile::rename(t, orig);
+            return false;
+        }
+        staged.append({pairs.at(i).first, tmp});
+    }
+    bool ok = true;
+    for (int i = 0; i < pairs.size(); ++i)
+        ok = QFile::rename(staged.at(i).second, pairs.at(i).second) && ok;
+    return ok;
+}
+}
+
+int FileOps::renameMany(const QStringList &paths, const QStringList &newNames)
+{
+    if (paths.size() != newNames.size())
+        return 0;
+    QList<QPair<QString, QString>> pairs;
+    QSet<QString> sources(paths.begin(), paths.end());
+    QSet<QString> targets;
+    for (int i = 0; i < paths.size(); ++i) {
+        const auto name = newNames.at(i).trimmed();
+        const QFileInfo fi(paths.at(i));
+        if (name.isEmpty() || name.contains('/') || name == "." || name == "..") {
+            emit errorOccurred(QStringLiteral("Nome inválido: “%1”").arg(name));
+            return 0;
+        }
+        const auto target = fi.absolutePath() + "/" + name;
+        if (target == fi.absoluteFilePath())
+            continue;
+        if (targets.contains(target)) {
+            emit errorOccurred(QStringLiteral("Dois itens ficariam com o nome “%1”").arg(name));
+            return 0;
+        }
+        if (QFileInfo::exists(target) && !sources.contains(target)) {
+            emit errorOccurred(QStringLiteral("Já existe um item chamado “%1”").arg(name));
+            return 0;
+        }
+        targets.insert(target);
+        pairs.append({fi.absoluteFilePath(), target});
+    }
+    if (pairs.isEmpty())
+        return 0;
+    if (!renamePairs(pairs)) {
+        emit errorOccurred(QStringLiteral("Não foi possível renomear todos os itens"));
+        return 0;
+    }
+    pushUndo(UndoKind::Rename, pairs);
+    emit finished(pairs.size() == 1 ? QStringLiteral("1 item renomeado")
+                                    : QStringLiteral("%1 itens renomeados").arg(pairs.size()));
+    return pairs.size();
+}
+
 QString FileOps::createFolder(const QString &parentDir)
 {
     QString target = parentDir + "/Nova pasta";
@@ -586,8 +648,16 @@ void FileOps::undo()
     emit undoChanged();
 
     if (entry.kind == UndoKind::Rename) {
-        const auto &[from, to] = entry.pairs.first();
-        if (QFileInfo::exists(from) || !QFile::rename(to, from))
+        QList<QPair<QString, QString>> back;
+        QSet<QString> renamed;
+        for (const auto &[from, to] : entry.pairs)
+            renamed.insert(to);
+        bool blocked = false;
+        for (const auto &[from, to] : entry.pairs) {
+            back.append({to, from});
+            blocked = blocked || (QFileInfo::exists(from) && !renamed.contains(from)); // nome antigo ocupado
+        }
+        if (blocked || !renamePairs(back))
             emit errorOccurred(QStringLiteral("Não foi possível desfazer a renomeação"));
         else
             emit finished(QStringLiteral("Desfeito"));

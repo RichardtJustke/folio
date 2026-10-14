@@ -22,6 +22,7 @@ Item {
     signal quickLook
     signal showProperties(var paths)
     signal openWith(string path)
+    signal renameMany(var paths)
     signal promptSelectPattern
 
     function activate(entry) {
@@ -84,6 +85,7 @@ Item {
         onNewFile: root.newFile()
         onShowProperties: paths => root.showProperties(paths)
         onOpenWith: path => root.openWith(path)
+        onRenameMany: paths => root.renameMany(paths)
         onPromptSelectPattern: root.promptSelectPattern()
         onOpenTerminalHere: dir => root.ops.openTerminal(dir)
         onOpenInNewTab: path => root.openInNewTab(path)

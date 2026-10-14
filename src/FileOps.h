@@ -67,6 +67,8 @@ public:
     Q_INVOKABLE void restoreFromTrash(const QStringList &paths);
     Q_INVOKABLE void emptyTrash();
     Q_INVOKABLE QString rename(const QString &path, const QString &newName);
+    // renomeia em lote (mesma pasta ou não); valida tudo antes e aceita trocas (a→b, b→a). Devolve quantos.
+    Q_INVOKABLE int renameMany(const QStringList &paths, const QStringList &newNames);
     Q_INVOKABLE QString createFolder(const QString &parentDir);
     Q_INVOKABLE void undo();
     Q_INVOKABLE void cancel();

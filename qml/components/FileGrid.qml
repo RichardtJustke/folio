@@ -37,6 +37,7 @@ Item {
     signal newFile
     signal showProperties(var paths)
     signal openWith(string path)
+    signal renameMany(var paths)
     signal promptSelectPattern
     signal openTerminalHere(string dir)
 
@@ -408,9 +409,10 @@ Item {
         }
         GlassMenuItem {
             text: "Renomear…"
+            shortcut: "F2"
             visible: !root.fileModel.isTrash
-            enabled: root.selection.length === 1
-            onTriggered: root.fileModel.renamingPath = root.selection[0]
+            onTriggered: root.selection.length === 1 ? root.fileModel.renamingPath = root.selection[0]
+                                                      : root.renameMany(root.selection)
         }
         GlassMenuItem {
             text: "Duplicar"

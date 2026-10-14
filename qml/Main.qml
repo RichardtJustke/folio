@@ -380,6 +380,7 @@ Window {
                     onQuickLook: win.openQuickLook()
                     onShowProperties: paths => win.showProperties(paths)
                     onOpenWith: path => openWithDialog.show(path)
+                    onRenameMany: paths => batchRename.show(paths)
                     onPromptSelectPattern: win.promptSelectPattern()
 
                     // clicar num painel o torna o ativo (é o que o cabeçalho e os atalhos controlam)
@@ -456,6 +457,7 @@ Window {
     ConfirmDialog { id: confirmDialog }
     ConflictDialog { id: conflictDialog; ops: fileOps }
     PromptDialog { id: promptDialog }
+    BatchRenameDialog { id: batchRename; ops: fileOps; onClosed: win.focusView() }
     ConnectDialog { id: connectDialog; ops: fileOps }
     PropertiesDialog { id: propertiesDialog; ops: fileOps }
     OpenWithDialog { id: openWithDialog; ops: fileOps }
@@ -473,9 +475,9 @@ Window {
     Shortcut { sequence: "Delete"; enabled: win.ready; onActivated: win.requestDelete(fm.selectedPaths(), false) }
     Shortcut { sequence: "Shift+Delete"; enabled: win.ready; onActivated: win.requestDelete(fm.selectedPaths(), true) }
     Shortcut {
-        sequence: "F2"
-        enabled: win.ready && fm.selectedCount === 1 && !fm.isTrash
-        onActivated: fm.renamingPath = fm.selectedPaths()[0]
+        sequence: "F2" // um item: renomeia no lugar; vários: renomear em lote
+        enabled: win.ready && fm.selectedCount >= 1 && !fm.isTrash
+        onActivated: fm.selectedCount === 1 ? fm.renamingPath = fm.selectedPaths()[0] : batchRename.show(fm.selectedPaths())
     }
     Shortcut { sequence: "Space"; enabled: win.ready; onActivated: quickLook.shown ? quickLook.shown = false : win.openQuickLook() }
     Shortcut { sequence: "Escape"; enabled: quickLook.shown; onActivated: quickLook.shown = false }

@@ -2,6 +2,10 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.15
+- Renomear vários itens de uma vez (F2 ou "Renomear…" com mais de um selecionado): **Substituir texto**, **Adicionar texto** (antes ou depois do nome) ou **Numerar** ("Viagem 01", "Viagem 02"…). A extensão é preservada e a prévia mostra antes → depois.
+- Tudo é validado antes (nomes repetidos, nomes já existentes) e aceita trocas entre os próprios itens; Ctrl+Z desfaz o lote inteiro.
+
 ## Alpha 0.14
 - Etiquetas de cor (Vermelho, Laranja, Amarelo, Verde, Azul, Roxo, Cinza): no menu de contexto, uma linha de bolinhas liga/desliga a etiqueta nos itens selecionados (✓ nas que todos já têm).
 - As etiquetas aparecem como bolinhas ao lado do tamanho (grade) e no fim do nome (lista).
