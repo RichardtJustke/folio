@@ -11,15 +11,15 @@ Item {
 
     height: Theme.listRowHeight
 
-    readonly property color fg: selected ? "white" : Theme.text
-    readonly property color fgDim: selected ? Theme.overlay(0.85) : Theme.textDim
+    readonly property color fg: Theme.text
+    readonly property color fgDim: Theme.textDim
 
     Rectangle {
         anchors.fill: parent
         radius: 6
         color: interaction.dropHover ? Theme.accentGlow
-             : root.selected ? Theme.accentSoft
-             : root.entry.index % 2 ? Theme.overlay(0.025) : "transparent"
+             : root.selected ? Theme.selected
+             : interaction.hovered ? Theme.overlay(0.035) : "transparent"
         border.width: interaction.dropHover ? 1.5 : 0
         border.color: Theme.accent
         Behavior on color { ColorAnimation { duration: Theme.dur(120) } }
@@ -78,10 +78,12 @@ Item {
         Cell { width: root.view.dateWidth; text: Theme.dateLabel(root.entry.modified) }
         Cell {
             width: root.view.sizeWidth
+            horizontalAlignment: Text.AlignRight
             text: root.entry.isDir ? Theme.itemsLabel(root.entry.itemCount) : Theme.sizeLabel(root.entry.size)
         }
         Cell {
             width: root.view.typeWidth
+            leftPadding: 14
             text: root.view.showLocation ? root.entry.location : root.entry.typeName
             elide: root.view.showLocation ? Text.ElideMiddle : Text.ElideRight
         }

@@ -1,6 +1,6 @@
 # makepkg -si  (rodar na raiz do projeto)
 pkgname=folio
-pkgver=0.9
+pkgver=0.10
 pkgrel=1
 pkgdesc="Gerenciador de arquivos estilo Finder para Wayland (Qt 6/QML)"
 arch=('x86_64')

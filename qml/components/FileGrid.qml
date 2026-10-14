@@ -18,8 +18,8 @@ Item {
     readonly property real rowHeight: listMode ? Theme.listRowHeight : Theme.tileHeight
 
     // colunas da lista
-    readonly property real dateWidth: 160
-    readonly property real sizeWidth: 90
+    readonly property real dateWidth: 132
+    readonly property real sizeWidth: 84
     readonly property real typeWidth: Math.min(200, Math.max(110, list.width * 0.2))
     readonly property real nameWidth: Math.max(160, list.width - dateWidth - sizeWidth - typeWidth)
 

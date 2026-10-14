@@ -2,6 +2,10 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.10
+- Lista com cabeçalho discreto: rótulos mais leves ("Modificado" no lugar de "Data de Modificação"), seta de ordenação pequena, e cada rótulo alinhado à sua coluna — "Nome" sobre o nome (depois do ícone), "Tamanho" à direita junto dos valores, "Tipo" sem cortar.
+- Linhas sem listras alternadas; seleção em cinza translúcido (como na grade) e realce suave ao passar o mouse.
+
 ## Alpha 0.9
 - Novos ícones na área de arquivos (grade, lista, Visualização Rápida), desenhados pelo próprio Folio: **Duotone** (padrão — símbolo colorido sobre um quadrado translúcido, uma cor por tipo), **macOS** (pasta azul preenchida, folha branca com etiqueta do tipo: PDF, MP4…), **Contorno**, **Plano** (folha cheia na cor do tipo) e **Sistema** (tema de ícones instalado, sem o pacote embutido). A barra lateral não muda.
 - Configurações → Aparência → "Ícones dos arquivos" escolhe o estilo; as pastas seguem a cor de destaque.
