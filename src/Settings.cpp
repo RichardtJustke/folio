@@ -14,7 +14,7 @@
 #include <QtGlobal>
 
 #ifndef FOLIO_VERSION
-#define FOLIO_VERSION "0.12"
+#define FOLIO_VERSION "0.13"
 #endif
 
 Settings::Settings(QObject *parent) : QObject(parent)
@@ -35,6 +35,7 @@ Settings::Settings(QObject *parent) : QObject(parent)
     m_fontFamily = c.value("fontFamily").toString();
     m_iconTheme = c.value("iconTheme").toString();
     m_fileIcons = c.value("fileIcons").toString(m_fileIcons);
+    m_previewPanel = c.value("previewPanel").toBool(m_previewPanel);
     m_legibility = c.value("legibility").toBool(m_legibility);
     m_reduceMotion = c.value("reduceMotion").toBool(m_reduceMotion);
     m_animSpeed = qBound(0.5, c.value("animationSpeed").toDouble(m_animSpeed), 2.0);
@@ -86,6 +87,7 @@ void Settings::setIconTheme(const QString &v)
 }
 
 void Settings::setFileIcons(const QString &v) { set(m_fileIcons, v, "fileIcons"); }
+void Settings::setPreviewPanel(bool v) { set(m_previewPanel, v, "previewPanel"); }
 
 void Settings::setLegibility(bool v) { set(m_legibility, v, "legibility"); }
 void Settings::setReduceMotion(bool v) { set(m_reduceMotion, v, "reduceMotion"); }

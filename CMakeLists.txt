@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
-project(folio VERSION 0.12.0 LANGUAGES CXX)
-set(FOLIO_VERSION_STRING "0.12")
+project(folio VERSION 0.13.0 LANGUAGES CXX)
+set(FOLIO_VERSION_STRING "0.13")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -63,6 +63,7 @@ qt_add_qml_module(folio
         qml/components/FileInteraction.qml
         qml/components/SearchField.qml
         qml/components/QuickLook.qml
+        qml/components/PreviewPanel.qml
         qml/components/GlassPopup.qml
         qml/components/DialogButton.qml
         qml/components/ConfirmDialog.qml

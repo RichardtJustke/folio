@@ -160,7 +160,9 @@ Item {
                 anchors.centerIn: parent
                 width: 160; height: 160
                 sourceSize: Qt.size(256, 256)
-                source: root.entry.isDir ? "" : Theme.icon(root.entry.icon)
+                source: root.entry.isDir ? ""
+                      : Settings.fileIcons === "system" ? Theme.icon(root.entry.icon) + "&pack=0"
+                      : Theme.fileIcon(root.entry.icon, root.entry.name)
             }
         }
     }

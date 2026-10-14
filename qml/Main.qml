@@ -26,6 +26,8 @@ Window {
         return width >= 860 ? "full" : width >= 560 ? "compact" : "hidden"
     }
     property bool settingsOpen: false
+    // painel de prévia (F3): some sozinho em janelas estreitas
+    readonly property bool previewShown: Settings.previewPanel && width >= 760 && !settingsOpen
 
     function toggleSidebar() {
         Settings.sidebarMode = sidebarState === "hidden" ? "full" : "hidden"
@@ -303,9 +305,22 @@ Window {
             }
         }
 
+        PreviewPanel {
+            id: previewPanel
+            ops: fileOps
+            fileModel: win.fm ?? emptyModel
+            anchors { right: parent.right; top: tabStrip.bottom; bottom: parent.bottom; margins: 8; topMargin: 4 }
+            width: win.previewShown ? 260 : 0
+            opacity: win.previewShown ? 1 : 0
+            visible: opacity > 0 && win.fm !== null
+            Behavior on width { NumberAnimation { duration: Theme.dur(200); easing.type: Easing.OutCubic } }
+            Behavior on opacity { NumberAnimation { duration: Theme.dur(160) } }
+        }
+        FileModel { id: emptyModel } // o painel precisa de um modelo mesmo sem abas
+
         Rectangle { // fundo de leitura da área de arquivos
             visible: !win.settingsOpen
-            anchors { left: sidebar.right; right: parent.right; top: tabStrip.bottom; bottom: parent.bottom; leftMargin: 4; margins: 4 }
+            anchors { left: sidebar.right; right: previewPanel.visible ? previewPanel.left : parent.right; top: tabStrip.bottom; bottom: parent.bottom; leftMargin: 4; margins: 4 }
             radius: Theme.radius - 4
             color: Theme.contentBacking
         }
@@ -316,8 +331,8 @@ Window {
             visible: opacity > 0
             Behavior on opacity { NumberAnimation { duration: Theme.dur(200) } }
             anchors {
-                left: sidebar.right; right: parent.right; top: tabStrip.bottom; bottom: parent.bottom
-                leftMargin: 4; rightMargin: win.split ? 6 : 0; bottomMargin: win.split ? 6 : 0
+                left: sidebar.right; right: previewPanel.visible ? previewPanel.left : parent.right; top: tabStrip.bottom; bottom: parent.bottom
+                leftMargin: 4; rightMargin: previewPanel.visible ? 4 : win.split ? 6 : 0; bottomMargin: win.split ? 6 : 0
             }
             readonly property bool vertical: width < 640 // janela estreita: painéis um sobre o outro
             readonly property int gap: 10
@@ -491,6 +506,7 @@ Window {
             fileOps.openTerminal(fm.isSearch && sel.length > 0 ? fileOps.parentDir(sel[0]) : fm.path)
         }
     }
+    Shortcut { sequence: "F3"; onActivated: Settings.previewPanel = !Settings.previewPanel }
     Shortcut { sequence: "Ctrl+T"; onActivated: win.newTab(fm ? fm.path : fileOps.startPath()) }
     Shortcut { sequence: "Ctrl+W"; onActivated: tabStrip.requestClose(win.currentTab) }
     Shortcut { sequences: ["Ctrl+\\", "F6"]; onActivated: win.toggleSplit() }

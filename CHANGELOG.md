@@ -2,6 +2,11 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.13
+- Painel de prévia à direita (F3, botão na barra de ferramentas ou menu ⋯): imagem, começo do texto, miniatura ou ícone do item selecionado, com tamanho, datas de modificação e criação, local, destino do link e permissões. Sem seleção mostra a pasta atual; com vários itens, a contagem e o tamanho somado. Some sozinho em janelas com menos de 760 px.
+- A Visualização Rápida também usa o estilo de ícones escolhido.
+- Modo de teste offscreen para desenvolvimento (`FOLIO_SNAPSHOT` + `FOLIO_KEYS` com `QT_QPA_PLATFORM=offscreen`): envia teclas à própria janela, salva uma captura e sai, sem abrir nada na sessão.
+
 ## Alpha 0.12
 - F4 abre o terminal na pasta atual (na busca, na pasta do item selecionado). Os menus mostram o atalho ao lado do item.
 - Terminal detectado automaticamente quando o campo das Configurações está vazio: `$TERMINAL`, depois o primeiro instalado entre xdg-terminal-exec, kitty, foot, alacritty, wezterm, ghostty, konsole, gnome-terminal, kgx, xfce4-terminal, tilix e xterm. Sem nenhum, um aviso explica onde configurar.

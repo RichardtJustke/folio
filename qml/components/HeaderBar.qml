@@ -191,6 +191,12 @@ Item {
             onActivated: root.fileModel.showHidden = !root.fileModel.showHidden
         }
         ToolButton { icon: "folder-new-symbolic"; visible: !root.narrow && !root.fileModel.isTrash; onActivated: root.newFolder() }
+        ToolButton { // painel de prévia (F3)
+            visible: !root.narrow
+            icon: "view-dual-symbolic,view-sidebar-symbolic"
+            checked: Settings.previewPanel
+            onActivated: Settings.previewPanel = !Settings.previewPanel
+        }
 
         ToolButton { // overflow no modo estreito
             visible: root.narrow
@@ -210,6 +216,7 @@ Item {
                     onTriggered: root.fileModel.showHidden = !root.fileModel.showHidden
                 }
                 GlassMenuItem { text: "Nova Pasta"; visible: !root.fileModel.isTrash; onTriggered: root.newFolder() }
+                GlassMenuItem { text: "Painel de Prévia"; shortcut: "F3"; tick: Settings.previewPanel; onTriggered: Settings.previewPanel = !Settings.previewPanel }
             }
         }
 
