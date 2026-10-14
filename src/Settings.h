@@ -27,6 +27,7 @@ class Settings : public QObject
     Q_PROPERTY(int iconRevision READ iconRevision NOTIFY changed)
     Q_PROPERTY(QString fileIcons READ fileIcons WRITE setFileIcons NOTIFY changed)          // duotone | mac | outline | flat | system
     Q_PROPERTY(bool previewPanel READ previewPanel WRITE setPreviewPanel NOTIFY changed)
+    Q_PROPERTY(bool singleWindow READ singleWindow WRITE setSingleWindow NOTIFY changed)
     Q_PROPERTY(bool legibility READ legibility WRITE setLegibility NOTIFY changed)
     Q_PROPERTY(bool reduceMotion READ reduceMotion WRITE setReduceMotion NOTIFY changed)
     Q_PROPERTY(qreal animationSpeed READ animationSpeed WRITE setAnimationSpeed NOTIFY changed) // 0.5 – 2.0
@@ -56,6 +57,7 @@ public:
     int iconRevision() const { return m_iconRevision; }
     QString fileIcons() const { return m_fileIcons; }
     bool previewPanel() const { return m_previewPanel; }
+    bool singleWindow() const { return m_singleWindow; }
     bool legibility() const { return m_legibility; }
     bool reduceMotion() const { return m_reduceMotion; }
     qreal animationSpeed() const { return m_animSpeed; }
@@ -80,6 +82,7 @@ public:
     void setIconTheme(const QString &v);
     void setFileIcons(const QString &v);
     void setPreviewPanel(bool v);
+    void setSingleWindow(bool v);
     void setLegibility(bool v);
     void setReduceMotion(bool v);
     void setAnimationSpeed(qreal v);
@@ -116,6 +119,7 @@ private:
     int m_iconRevision = 0;
     QString m_fileIcons = QStringLiteral("duotone");
     bool m_previewPanel = false;
+    bool m_singleWindow = false;
     bool m_legibility = true;
     bool m_reduceMotion = false;
     qreal m_animSpeed = 1.0;

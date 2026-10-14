@@ -9,6 +9,7 @@
 
 #include "Config.h"
 #include "FileManager1.h"
+#include "FileOps.h"
 #include "IconProvider.h"
 #include "Thumbnailer.h"
 #include <QDir>
@@ -75,6 +76,16 @@ int main(int argc, char *argv[])
     setupIconTheme();
     Thumbnailer::init();
 
+    // Janela única: se já há um Folio aberto, ele abre a pasta numa aba nova e este processo sai.
+    // (--new-window = Ctrl+N; --dbus-service = ativação pelo D-Bus)
+    const auto args = QCoreApplication::arguments();
+    if (Config::load().value("singleWindow").toBool() && qEnvironmentVariableIsEmpty("FOLIO_SNAPSHOT")
+        && !args.contains("--new-window") && !args.contains("--dbus-service")) {
+        FileOps probe;
+        if (FolioInstance::forward(probe.startPath(), probe.startReveal()))
+            return 0;
+    }
+
     QQmlApplicationEngine engine;
     // Antes do QML: o Main.qml liga os sinais assim que é criado
     auto *fileManager1 = new FileManager1(&app);
@@ -85,8 +96,11 @@ int main(int argc, char *argv[])
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app,
                      [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
     engine.loadFromModule("Folio", "Main");
-    if (qEnvironmentVariableIsEmpty("FOLIO_SNAPSHOT"))
+    // em teste (FOLIO_SNAPSHOT) só entra no D-Bus num barramento privado (FOLIO_TEST_BUS)
+    if (qEnvironmentVariableIsEmpty("FOLIO_SNAPSHOT") || !qEnvironmentVariableIsEmpty("FOLIO_TEST_BUS")) {
         fileManager1->registerOnBus();
+        (new FolioInstance(fileManager1))->registerOnBus();
+    }
     runSnapshot(engine);
     return app.exec();
 }

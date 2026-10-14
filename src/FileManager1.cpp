@@ -2,6 +2,8 @@
 
 #include <QDBusConnection>
 #include <QDBusConnectionInterface>
+#include <QDBusInterface>
+#include <QDBusMessage>
 #include <QFileInfo>
 #include <QUrl>
 
@@ -56,4 +58,29 @@ void FileManager1::ShowItemProperties(const QStringList &uris, const QString &)
     const auto paths = toPaths(uris);
     if (!paths.isEmpty())
         emit propertiesRequested(paths);
+}
+
+void FolioInstance::registerOnBus()
+{
+    auto bus = QDBusConnection::sessionBus();
+    if (!bus.isConnected())
+        return;
+    bus.registerObject("/", this, QDBusConnection::ExportScriptableSlots);
+    bus.interface()->registerService(kService, QDBusConnectionInterface::QueueService,
+                                     QDBusConnectionInterface::DontAllowReplacement);
+}
+
+bool FolioInstance::forward(const QString &folder, const QString &reveal)
+{
+    auto bus = QDBusConnection::sessionBus();
+    if (!bus.isConnected() || !bus.interface()->isServiceRegistered(kService))
+        return false;
+    QDBusInterface iface(kService, "/", kService, bus);
+    const auto reply = iface.call("Open", folder, reveal);
+    return reply.type() == QDBusMessage::ReplyMessage;
+}
+
+void FolioInstance::Open(const QString &folder, const QString &reveal)
+{
+    emit m_target->openRequested(folder, reveal);
 }

@@ -2,6 +2,10 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.17
+- Configurações → Comportamento → "Janela única" (desligada por padrão): abrir o Folio de novo (Super+E, `xdg-open`, outros apps) usa a janela aberta, numa aba nova, em vez de abrir outra janela. Ctrl+N continua abrindo uma janela separada.
+- Os pedidos passam pela interface D-Bus `io.github.richardtjustke.Folio` da primeira instância; a nova sai em menos de 0,1 s.
+
 ## Alpha 0.16
 - Busca rápida (Ctrl+P): uma paleta que procura arquivos e pastas em toda a pasta pessoal enquanto você digita, com os arquivos recentes (`recently-used.xbel`) primeiro e depois os nomes que começam com o termo. Sem texto, lista os recentes.
 - ↑/↓ escolhem; Enter abre (pasta: navega até ela); Shift+Enter mostra o item na pasta. Pastas ocultas ficam de fora; a busca roda em segundo plano e para em 40 resultados.

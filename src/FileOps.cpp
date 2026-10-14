@@ -1044,7 +1044,7 @@ void FileOps::copyText(const QString &text)
 
 void FileOps::openNewWindow(const QString &path)
 {
-    QProcess::startDetached(QCoreApplication::applicationFilePath(), {path});
+    QProcess::startDetached(QCoreApplication::applicationFilePath(), {path, "--new-window"});
 }
 
 QVariantList FileOps::appsForMime(const QString &mimeName) const

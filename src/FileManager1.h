@@ -27,3 +27,24 @@ signals:
 private:
     static QStringList toPaths(const QStringList &uris);
 };
+
+// io.github.richardtjustke.Folio: a primeira instância recebe os pedidos das seguintes
+// quando "Janela única" está ligada (Configurações → Comportamento).
+class FolioInstance : public QObject
+{
+    Q_OBJECT
+    Q_CLASSINFO("D-Bus Interface", "io.github.richardtjustke.Folio")
+
+public:
+    static constexpr const char *kService = "io.github.richardtjustke.Folio";
+    explicit FolioInstance(FileManager1 *target) : QObject(target), m_target(target) {}
+    void registerOnBus();
+    // true se repassou para a instância aberta (o processo atual pode sair)
+    static bool forward(const QString &folder, const QString &reveal);
+
+public slots:
+    Q_SCRIPTABLE void Open(const QString &folder, const QString &reveal);
+
+private:
+    FileManager1 *m_target;
+};

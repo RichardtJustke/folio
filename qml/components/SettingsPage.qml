@@ -322,6 +322,11 @@ Rectangle {
                 Toggle { on: Settings.singleClick; onToggled: v => Settings.singleClick = v }
             }
             Line {
+                label: "Janela única"
+                hint: "Abrir o Folio de novo (Super+E, outros apps) usa a janela aberta, numa aba nova. Ctrl+N ainda abre outra janela"
+                Toggle { on: Settings.singleWindow; onToggled: v => Settings.singleWindow = v }
+            }
+            Line {
                 label: "Confirmar antes de excluir permanentemente"
                 Toggle { on: Settings.confirmTrash; onToggled: v => Settings.confirmTrash = v }
             }
