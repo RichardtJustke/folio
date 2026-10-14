@@ -2,6 +2,10 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.16
+- Busca rápida (Ctrl+P): uma paleta que procura arquivos e pastas em toda a pasta pessoal enquanto você digita, com os arquivos recentes (`recently-used.xbel`) primeiro e depois os nomes que começam com o termo. Sem texto, lista os recentes.
+- ↑/↓ escolhem; Enter abre (pasta: navega até ela); Shift+Enter mostra o item na pasta. Pastas ocultas ficam de fora; a busca roda em segundo plano e para em 40 resultados.
+
 ## Alpha 0.15
 - Renomear vários itens de uma vez (F2 ou "Renomear…" com mais de um selecionado): **Substituir texto**, **Adicionar texto** (antes ou depois do nome) ou **Numerar** ("Viagem 01", "Viagem 02"…). A extensão é preservada e a prévia mostra antes → depois.
 - Tudo é validado antes (nomes repetidos, nomes já existentes) e aceita trocas entre os próprios itens; Ctrl+Z desfaz o lote inteiro.

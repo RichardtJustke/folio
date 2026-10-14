@@ -458,6 +458,13 @@ Window {
     ConflictDialog { id: conflictDialog; ops: fileOps }
     PromptDialog { id: promptDialog }
     BatchRenameDialog { id: batchRename; ops: fileOps; onClosed: win.focusView() }
+    QuickOpen {
+        id: quickOpen
+        ops: fileOps
+        onNavigate: path => { win.settingsOpen = false; win.nav.go(path) }
+        onReveal: path => { win.settingsOpen = false; win.tab.reveal(path) }
+        onClosed: win.focusView()
+    }
     ConnectDialog { id: connectDialog; ops: fileOps }
     PropertiesDialog { id: propertiesDialog; ops: fileOps }
     OpenWithDialog { id: openWithDialog; ops: fileOps }
@@ -515,6 +522,7 @@ Window {
             fileOps.openTerminal(fm.isSearch && sel.length > 0 ? fileOps.parentDir(sel[0]) : fm.path)
         }
     }
+    Shortcut { sequence: "Ctrl+P"; enabled: win.tab !== null; onActivated: quickOpen.show() }
     Shortcut { sequence: "F3"; onActivated: Settings.previewPanel = !Settings.previewPanel }
     Shortcut { sequence: "Ctrl+T"; onActivated: win.newTab(fm ? fm.path : fileOps.startPath()) }
     Shortcut { sequence: "Ctrl+W"; onActivated: tabStrip.requestClose(win.currentTab) }
