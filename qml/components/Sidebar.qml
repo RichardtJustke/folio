@@ -15,6 +15,7 @@ Rectangle {
     signal topClicked
 
     signal navigate(string path)
+    signal tagClicked(string tag)
     signal dropOnPlace(var drop, string path)
 
     // centro do ícone de um lugar, em coordenadas da janela (null se a barra estiver oculta/fora da vista)
@@ -110,6 +111,51 @@ Rectangle {
 
         footer: Column {
             width: ListView.view.width
+            Item { // título "Etiquetas" (no modo só-ícones, um divisor)
+                width: parent.width
+                height: root.compact ? 16 : 30
+                Text {
+                    visible: !root.compact
+                    x: 18; y: 12
+                    text: "Etiquetas"
+                    color: Theme.textFaint
+                    font.pixelSize: 11
+                    font.weight: Font.DemiBold
+                }
+                Rectangle {
+                    visible: root.compact
+                    anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; margins: 16 }
+                    height: 1
+                    color: Theme.border
+                }
+            }
+            Flow { // bolinhas: clique busca os itens com a etiqueta
+                x: root.compact ? (parent.width - width) / 2 : 18
+                width: root.compact ? 14 : parent.width - 36
+                spacing: root.compact ? 8 : 10
+                topPadding: 4; bottomPadding: 8
+                Repeater {
+                    model: Theme.tagNames
+                    delegate: Rectangle {
+                        required property string modelData
+                        width: 14; height: 14; radius: 7
+                        color: Theme.tagColor(modelData)
+                        scale: tagArea.containsMouse ? 1.2 : 1
+                        Behavior on scale { NumberAnimation { duration: Theme.dur(100) } }
+                        MouseArea {
+                            id: tagArea
+                            anchors.fill: parent
+                            anchors.margins: -3
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            ToolTip.visible: containsMouse
+                            ToolTip.text: parent.modelData
+                            ToolTip.delay: 400
+                            onClicked: root.tagClicked(parent.modelData)
+                        }
+                    }
+                }
+            }
             SidebarItem {
                 width: parent.width
                 compact: root.compact

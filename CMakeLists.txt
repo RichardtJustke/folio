@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
-project(folio VERSION 0.13.0 LANGUAGES CXX)
-set(FOLIO_VERSION_STRING "0.13")
+project(folio VERSION 0.14.0 LANGUAGES CXX)
+set(FOLIO_VERSION_STRING "0.14")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -32,6 +32,7 @@ qt_add_qml_module(folio
         src/FileOps.h src/FileOps.cpp
         src/PlacesModel.h src/PlacesModel.cpp
         src/Config.h src/Config.cpp
+        src/Tags.h src/Tags.cpp
         src/Settings.h src/Settings.cpp
     QML_FILES
         qml/Main.qml
@@ -64,6 +65,8 @@ qt_add_qml_module(folio
         qml/components/SearchField.qml
         qml/components/QuickLook.qml
         qml/components/PreviewPanel.qml
+        qml/components/TagMenuItem.qml
+        qml/components/TagDots.qml
         qml/components/GlassPopup.qml
         qml/components/DialogButton.qml
         qml/components/ConfirmDialog.qml

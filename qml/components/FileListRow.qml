@@ -50,9 +50,14 @@ Item {
                           : Theme.fileIcon(root.entry.icon, root.entry.name)
                 }
             }
+            TagDots {
+                id: rowTags
+                anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                tags: root.entry.tags
+            }
             Text {
                 visible: !root.renaming
-                anchors { left: icon.right; leftMargin: 8; right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                anchors { left: icon.right; leftMargin: 8; right: rowTags.visible ? rowTags.left : parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
                 text: root.entry.name
                 color: root.fg
                 font.pixelSize: Theme.fontSize

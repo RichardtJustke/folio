@@ -1,6 +1,7 @@
 #include "FileOps.h"
 
 #include "Config.h"
+#include "Tags.h"
 
 #include <QClipboard>
 #include <QCoreApplication>
@@ -1232,4 +1233,28 @@ void FileOps::computeSize(const QStringList &paths)
                 emit self->sizeComputed(bytes, files, folders);
         }, Qt::QueuedConnection);
     });
+}
+
+bool FileOps::toggleTag(const QStringList &paths, const QString &tag)
+{
+    bool all = !paths.isEmpty();
+    for (const auto &p : paths)
+        all = all && Tags::read(p).contains(tag);
+    int failed = 0;
+    for (const auto &p : paths) {
+        auto tags = Tags::read(p);
+        tags.removeAll(tag);
+        if (!all)
+            tags.append(tag);
+        if (!Tags::write(p, tags))
+            ++failed;
+    }
+    if (failed)
+        emit errorOccurred(tr("Não foi possível etiquetar %n item(ns) (o sistema de arquivos não aceita atributos)", "", failed));
+    return !all;
+}
+
+QStringList FileOps::tagsOf(const QString &path) const
+{
+    return Tags::read(path);
 }

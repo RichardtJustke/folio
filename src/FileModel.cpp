@@ -11,6 +11,8 @@
 #include <QFutureWatcher>
 #include <QJsonValue>
 #include <QMimeDatabase>
+
+#include "Tags.h"
 #include <QStandardPaths>
 #include <QtConcurrent>
 
@@ -76,6 +78,7 @@ FileEntry makeEntry(const QFileInfo &fi, QDir::Filters filters, bool countChildr
     e.isSymlink = fi.isSymLink();
     e.modified = fi.lastModified();
     e.section = sectionFor(e.modified, today);
+    e.tags = Tags::read(e.path);
     if (e.isDir) {
         if (countChildren)
             e.itemCount = QDir(e.path).entryList(filters).size();
@@ -134,11 +137,15 @@ Listing searchTree(const QString &root, const QString &query, bool showHidden, s
     Listing out;
     const auto filters = filtersFor(showHidden);
     const auto today = QDate::currentDate();
+    // "tag:Azul" procura pela etiqueta em vez do nome
+    const bool byTag = query.startsWith(QLatin1String("tag:"), Qt::CaseInsensitive);
+    const auto tag = byTag ? query.mid(4).trimmed() : QString();
     QDirIterator it(root, filters, QDirIterator::Subdirectories);
     while (it.hasNext() && !*cancel) {
         it.next();
         const auto fi = it.fileInfo();
-        if (!fi.fileName().contains(query, Qt::CaseInsensitive))
+        if (byTag ? !Tags::read(fi.absoluteFilePath()).contains(tag, Qt::CaseInsensitive)
+                  : !fi.fileName().contains(query, Qt::CaseInsensitive))
             continue;
         out.entries.append(makeEntry(fi, filters, false, today));
         if (out.entries.size() >= kMaxSearchResults) {
@@ -407,8 +414,10 @@ void FileModel::refilter()
         m_entries = m_all;
     } else {
         m_entries.clear();
+        const bool byTag = m_query.startsWith(QLatin1String("tag:"), Qt::CaseInsensitive); // "tag:Azul"
+        const auto tag = m_query.mid(4).trimmed();
         for (const auto &e : std::as_const(m_all))
-            if (e.name.contains(m_query, Qt::CaseInsensitive))
+            if (byTag ? e.tags.contains(tag, Qt::CaseInsensitive) : e.name.contains(m_query, Qt::CaseInsensitive))
                 m_entries.append(e);
     }
     sortEntries(m_entries, m_sortKey, m_sortDesc, m_groupByDate);

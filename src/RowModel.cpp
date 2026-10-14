@@ -114,6 +114,7 @@ QVariantMap RowModel::entryToMap(const FileEntry &e, int index)
     return {
         {"index", index},
         {"name", e.name},
+        {"tags", e.tags},
         {"location", e.location},
         {"typeName", e.typeName},
         {"mime", e.mime},

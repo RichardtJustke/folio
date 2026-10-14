@@ -2,6 +2,7 @@
 
 #include <QDateTime>
 #include <QString>
+#include <QStringList>
 
 enum class DateSection { Today, Yesterday, LastWeek, Older };
 
@@ -15,6 +16,7 @@ struct FileEntry {
     QString mime;
     QString thumb;     // id para image://thumb/ ("" = sem miniatura)
     QString preview;   // "image" | "text" | "thumb" | "icon"
+    QStringList tags;  // etiquetas de cor (user.xdg.tags)
     QDateTime modified;
     qint64 size = 0;
     int itemCount = -1; // -1 para arquivos ou quando não contado

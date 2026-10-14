@@ -116,16 +116,20 @@ Item {
             }
         }
 
-        Text { // "X itens" / tamanho / local (busca)
+        Row { // etiquetas + "X itens" / tamanho / local (busca)
             visible: !root.renaming
             anchors.horizontalCenter: parent.horizontalCenter
-            width: Math.min(parent.width, implicitWidth)
+            spacing: 5
+            TagDots { anchors.verticalCenter: parent.verticalCenter; tags: root.entry.tags }
+        Text {
+            width: Math.min(root.width - 24, implicitWidth)
             elide: Text.ElideMiddle
             text: root.view.showLocation ? root.entry.location
                 : root.entry.isDir ? Theme.itemsLabel(root.entry.itemCount)
                 : Theme.sizeLabel(root.entry.size)
             color: Theme.info
             font.pixelSize: 11
+        }
         }
     }
 

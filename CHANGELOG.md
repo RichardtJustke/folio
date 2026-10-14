@@ -2,6 +2,12 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.14
+- Etiquetas de cor (Vermelho, Laranja, Amarelo, Verde, Azul, Roxo, Cinza): no menu de contexto, uma linha de bolinhas liga/desliga a etiqueta nos itens selecionados (✓ nas que todos já têm).
+- As etiquetas aparecem como bolinhas ao lado do tamanho (grade) e no fim do nome (lista).
+- Barra lateral → "Etiquetas": clicar numa cor busca os itens com ela em toda a pasta pessoal. Na busca, `tag:Azul` filtra por etiqueta.
+- Gravadas no atributo estendido `user.xdg.tags`, o mesmo do Dolphin: valem entre gerenciadores e acompanham o arquivo.
+
 ## Alpha 0.13
 - Painel de prévia à direita (F3, botão na barra de ferramentas ou menu ⋯): imagem, começo do texto, miniatura ou ícone do item selecionado, com tamanho, datas de modificação e criação, local, destino do link e permissões. Sem seleção mostra a pasta atual; com vários itens, a contagem e o tamanho somado. Some sozinho em janelas com menos de 760 px.
 - A Visualização Rápida também usa o estilo de ícones escolhido.

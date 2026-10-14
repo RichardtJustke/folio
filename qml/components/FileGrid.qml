@@ -392,6 +392,14 @@ Item {
             onTriggered: root.openTerminalHere(root.selection[0])
         }
         GlassMenuItem { text: "Visualização Rápida"; onTriggered: root.quickLook() }
+        Separator { visible: !root.fileModel.isTrash }
+        TagMenuItem {
+            visible: !root.fileModel.isTrash
+            paths: root.selection
+            ops: root.ops
+            revision: root.fileModel.revision
+            onChanged: root.fileModel.reload()
+        }
         Separator {}
         GlassMenuItem {
             text: "Restaurar"

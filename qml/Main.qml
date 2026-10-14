@@ -250,6 +250,13 @@ Window {
                 if (dir) { placesModel.addFavorite(dir); toast.show("Pasta adicionada") }
                 else toast.show("Pasta não encontrada", true)
             })
+            onTagClicked: tag => { // busca a etiqueta em toda a pasta pessoal
+                win.settingsOpen = false
+                if (!win.fm) return
+                if (win.fm.path !== Settings.home) win.nav.go(Settings.home)
+                win.fm.searchRecursive = true
+                win.fm.searchQuery = "tag:" + tag
+            }
             onNavigate: path => {
                 win.settingsOpen = false
                 if (path !== "folio:network") { win.nav.go(path); return }

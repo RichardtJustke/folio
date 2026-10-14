@@ -79,6 +79,21 @@ QtObject {
     }
 
     // URL de ícone do tema, opcionalmente tingido (sem "#", que viraria fragmento da URL)
+    // etiquetas de cor (nomes gravados em user.xdg.tags)
+    readonly property var tagNames: ["Vermelho", "Laranja", "Amarelo", "Verde", "Azul", "Roxo", "Cinza"]
+    function tagColor(name) {
+        switch (name.toLowerCase()) {
+        case "vermelho": case "red": return "#ff5f57"
+        case "laranja": case "orange": return "#ff9f0a"
+        case "amarelo": case "yellow": return "#ffd60a"
+        case "verde": case "green": return "#30d158"
+        case "azul": case "blue": return "#0a84ff"
+        case "roxo": case "purple": return "#bf5af2"
+        case "cinza": case "gray": case "grey": return "#98989d"
+        default: return textDim
+        }
+    }
+
     // ícones da área de arquivos no estilo escolhido (Configurações → Ícones dos arquivos)
     function fileIcon(names, fileName, tileOnly) {
         const dot = fileName ? fileName.lastIndexOf(".") : -1
