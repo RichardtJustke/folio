@@ -2,6 +2,10 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.9
+- Novos ícones na área de arquivos (grade, lista, Visualização Rápida), desenhados pelo próprio Folio: **Duotone** (padrão — símbolo colorido sobre um quadrado translúcido, uma cor por tipo), **macOS** (pasta azul preenchida, folha branca com etiqueta do tipo: PDF, MP4…), **Contorno**, **Plano** (folha cheia na cor do tipo) e **Sistema** (tema de ícones instalado, sem o pacote embutido). A barra lateral não muda.
+- Configurações → Aparência → "Ícones dos arquivos" escolhe o estilo; as pastas seguem a cor de destaque.
+
 ## Alpha 0.8
 - "Mostrar na pasta" de navegadores e outros apps abre o Folio: implementa `org.freedesktop.FileManager1` no D-Bus (`ShowFolders`, `ShowItems` com o arquivo selecionado, `ShowItemProperties`). Com o Folio aberto vira uma aba nova na janela; fechado, o D-Bus o inicia (`folio --dbus-service`). A instalação fora de `/usr` grava `~/.local/share/dbus-1/services/org.freedesktop.FileManager1.service`, que tem precedência sobre o do Nautilus/Dolphin.
 - `folio /caminho/arquivo` abre a pasta com o arquivo selecionado.

@@ -14,7 +14,7 @@
 #include <QtGlobal>
 
 #ifndef FOLIO_VERSION
-#define FOLIO_VERSION "0.8"
+#define FOLIO_VERSION "0.9"
 #endif
 
 Settings::Settings(QObject *parent) : QObject(parent)
@@ -34,6 +34,7 @@ Settings::Settings(QObject *parent) : QObject(parent)
     m_terminal = c.value("terminal").toString();
     m_fontFamily = c.value("fontFamily").toString();
     m_iconTheme = c.value("iconTheme").toString();
+    m_fileIcons = c.value("fileIcons").toString(m_fileIcons);
     m_legibility = c.value("legibility").toBool(m_legibility);
     m_reduceMotion = c.value("reduceMotion").toBool(m_reduceMotion);
     m_animSpeed = qBound(0.5, c.value("animationSpeed").toDouble(m_animSpeed), 2.0);
@@ -84,6 +85,8 @@ void Settings::setIconTheme(const QString &v)
     emit changed();
 }
 
+void Settings::setFileIcons(const QString &v) { set(m_fileIcons, v, "fileIcons"); }
+
 void Settings::setLegibility(bool v) { set(m_legibility, v, "legibility"); }
 void Settings::setReduceMotion(bool v) { set(m_reduceMotion, v, "reduceMotion"); }
 void Settings::setAnimationSpeed(qreal v) { set(m_animSpeed, qBound(0.5, v, 2.0), "animationSpeed"); }
@@ -130,6 +133,7 @@ void Settings::resetAppearance()
     setSidebarMode("auto");
     setLegibility(true);
     setFontFamily("");
+    setFileIcons("duotone");
 }
 
 QString Settings::home() const { return QDir::homePath(); }

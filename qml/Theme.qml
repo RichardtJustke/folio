@@ -79,6 +79,14 @@ QtObject {
     }
 
     // URL de ícone do tema, opcionalmente tingido (sem "#", que viraria fragmento da URL)
+    // ícones da área de arquivos no estilo escolhido (Configurações → Ícones dos arquivos)
+    function fileIcon(names, fileName, tileOnly) {
+        const dot = fileName ? fileName.lastIndexOf(".") : -1
+        const ext = dot > 0 ? fileName.slice(dot + 1) : ""
+        return "image://fileicon/" + Settings.fileIcons + "/" + names + "?ext=" + encodeURIComponent(ext)
+            + "&accent=" + Settings.accent.slice(1) + "&light=" + (light ? 1 : 0) + (tileOnly ? "&tile=1" : "")
+    }
+
     function icon(names, tint) {
         return "image://icon/" + names + "?rev=" + Settings.iconRevision + (tint ? "&color=" + tint.toString().slice(1) : "")
     }

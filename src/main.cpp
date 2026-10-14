@@ -50,6 +50,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("fileManager1", fileManager1);
     engine.addImageProvider("icon", new IconProvider);
     engine.addImageProvider("thumb", new ThumbnailProvider);
+    engine.addImageProvider("fileicon", new FileIconProvider);
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app,
                      [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
     engine.loadFromModule("Folio", "Main");

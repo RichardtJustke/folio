@@ -35,13 +35,20 @@ Item {
             width: root.view.nameWidth - 8
             height: parent.height
 
-            Image {
+            Item {
                 id: icon
                 anchors.verticalCenter: parent.verticalCenter
                 width: 18; height: 18
-                sourceSize: Qt.size(36, 36)
-                asynchronous: true
-                source: root.entry.isDir ? Theme.folderSvg : Theme.icon(root.entry.icon)
+                FolderIcon { visible: root.entry.isDir; anchors.fill: parent; glyph: root.entry.glyph }
+                Image {
+                    visible: !root.entry.isDir
+                    anchors.fill: parent
+                    sourceSize: Qt.size(36, 36)
+                    asynchronous: true
+                    source: root.entry.isDir ? ""
+                          : Settings.fileIcons === "system" ? Theme.icon(root.entry.icon) + "&pack=0"
+                          : Theme.fileIcon(root.entry.icon, root.entry.name)
+                }
             }
             Text {
                 visible: !root.renaming

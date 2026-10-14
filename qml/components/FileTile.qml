@@ -43,7 +43,9 @@ Item {
                 width: Theme.iconSize - 12; height: width
                 sourceSize: Qt.size(width * 2, height * 2)
                 asynchronous: true
-                source: root.entry.isDir ? "" : Theme.icon(root.entry.icon)
+                source: root.entry.isDir ? ""
+                      : Settings.fileIcons === "system" ? Theme.icon(root.entry.icon) + "&pack=0"
+                      : Theme.fileIcon(root.entry.icon, root.entry.name)
             }
             Image { // miniatura freedesktop
                 id: thumb

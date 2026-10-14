@@ -254,6 +254,17 @@ Rectangle {
                 }
             }
             Line {
+                label: "Ícones dos arquivos"
+                hint: "Estilo dos ícones na área de arquivos"
+                Segmented {
+                    options: [{ value: "duotone", label: "Duotone" }, { value: "mac", label: "macOS" },
+                              { value: "outline", label: "Contorno" }, { value: "flat", label: "Plano" },
+                              { value: "system", label: "Sistema" }]
+                    current: Settings.fileIcons
+                    onPicked: v => Settings.fileIcons = v
+                }
+            }
+            Line {
                 label: "Tema de ícones"
                 hint: "Aplicado na hora"
                 DialogButton {
