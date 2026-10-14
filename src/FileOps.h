@@ -76,6 +76,8 @@ public:
     Q_INVOKABLE QUrl fileUrl(const QString &path) const;
     Q_INVOKABLE QString readText(const QString &path, int maxBytes = 65536) const;
     Q_INVOKABLE QString parentDir(const QString &path) const;
+    // pastas que completam o caminho digitado (mantém "~/" se o usuário usou); no máximo `limit`
+    Q_INVOKABLE QStringList completions(const QString &typed, int limit = 8) const;
 
     // ── extras estilo Nautilus ──
     Q_INVOKABLE QString createFile(const QString &parentDir);

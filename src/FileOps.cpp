@@ -1123,6 +1123,31 @@ QString FileOps::networkDir() const
     return QFileInfo(dir).isDir() ? dir : QString();
 }
 
+QStringList FileOps::completions(const QString &typed, int limit) const
+{
+    const auto t = typed.trimmed();
+    const int slash = t.lastIndexOf('/');
+    if (slash < 0)
+        return {};
+    const auto typedDir = t.left(slash + 1); // como o usuário escreveu: "~/Doc" -> "~/"
+    const auto prefix = t.mid(slash + 1);
+    const QDir dir(Config::expand(typedDir));
+    if (!dir.exists())
+        return {};
+    auto filters = QDir::Dirs | QDir::NoDotAndDotDot;
+    if (prefix.startsWith('.'))
+        filters |= QDir::Hidden;
+    QStringList out;
+    for (const auto &name : dir.entryList(filters, QDir::Name | QDir::IgnoreCase)) {
+        if (!name.startsWith(prefix, Qt::CaseInsensitive))
+            continue;
+        out.append(typedDir + name + "/");
+        if (out.size() >= limit)
+            break;
+    }
+    return out;
+}
+
 QString FileOps::resolveDir(const QString &typed) const
 {
     auto t = typed.trimmed();

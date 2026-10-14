@@ -2,13 +2,15 @@ import QtQuick
 import QtQuick.Controls
 import Folio
 
-// Caminho em segmentos clicáveis; clique no vazio (ou Ctrl+L) vira um campo editável.
+// Caminho em segmentos clicáveis; clique no vazio (ou Ctrl+L) vira um campo editável,
+// com sugestões de pastas (↑/↓ escolhem, Tab completa).
 Item {
     id: root
 
     required property string path
     required property string title
     required property bool special // lixeira / busca: mostra só o título
+    required property FileOps ops
     property bool editing: false
 
     signal navigate(string path)
@@ -18,9 +20,33 @@ Item {
     function edit() {
         if (special) return
         editing = true
-        field.text = root.path
+        field.text = root.path === Settings.home ? "~/" : root.path.startsWith(Settings.home + "/")
+                   ? "~" + root.path.slice(Settings.home.length) + "/" : root.path + (root.path === "/" ? "" : "/")
         field.forceActiveFocus()
         field.selectAll()
+    }
+
+    // ── sugestões ──
+    property var suggestions: []
+    property int suggestion: -1
+    function refreshSuggestions() {
+        suggestions = editing ? ops.completions(field.text) : []
+        suggestion = -1
+    }
+    // Tab: com uma sugestão escolhida usa ela; senão completa o prefixo comum de todas
+    function complete() {
+        if (suggestions.length === 0) return
+        let t = suggestion >= 0 ? suggestions[suggestion] : suggestions[0]
+        if (suggestion < 0) {
+            for (const s of suggestions) {
+                let i = 0
+                while (i < t.length && i < s.length && t[i].toLowerCase() === s[i].toLowerCase()) i++
+                t = t.slice(0, i)
+            }
+            if (t.length <= field.text.length) { suggestion = 0; return } // nada a completar: destaca a 1ª
+        }
+        field.text = t
+        field.cursorPosition = t.length
     }
 
     readonly property var segments: {
@@ -120,8 +146,55 @@ Item {
         verticalAlignment: TextInput.AlignVCenter
         leftPadding: 12
         background: Rectangle { radius: height / 2; color: Theme.pillBg; border.width: 1; border.color: Theme.accent }
-        onAccepted: { root.editing = false; root.submitted(text); root.closed() }
-        Keys.onEscapePressed: { root.editing = false; root.closed() }
+        onAccepted: {
+            const t = root.suggestion >= 0 ? root.suggestions[root.suggestion] : text
+            root.editing = false; root.submitted(t); root.closed()
+        }
+        onTextEdited: root.refreshSuggestions()
+        Keys.onTabPressed: root.complete()
+        Keys.onDownPressed: if (root.suggestions.length) root.suggestion = (root.suggestion + 1) % root.suggestions.length
+        Keys.onUpPressed: if (root.suggestions.length) root.suggestion = root.suggestion <= 0 ? root.suggestions.length - 1 : root.suggestion - 1
+        Keys.onEscapePressed: {
+            if (root.suggestions.length) { root.suggestions = []; return }
+            root.editing = false; root.closed()
+        }
         onActiveFocusChanged: if (!activeFocus && root.editing) { root.editing = false; root.closed() }
+    }
+
+    Popup {
+        id: suggestPopup
+        y: root.height + 6
+        width: root.width
+        padding: 4
+        visible: root.editing && root.suggestions.length > 0
+        closePolicy: Popup.NoAutoClose
+        focus: false
+        background: Rectangle { radius: 12; color: Theme.light ? Qt.rgba(0.98, 0.98, 0.99, 0.97) : Qt.rgba(0.16, 0.16, 0.17, 0.96); border.width: 1; border.color: Theme.border }
+        contentItem: Column {
+            Repeater {
+                model: root.suggestions
+                delegate: Rectangle {
+                    required property string modelData
+                    required property int index
+                    width: suggestPopup.width - 8; height: 28; radius: 8
+                    color: index === root.suggestion ? Theme.selected : sArea.containsMouse ? Theme.hover : "transparent"
+                    Text {
+                        anchors { left: parent.left; right: parent.right; leftMargin: 10; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                        text: modelData
+                        color: Theme.text
+                        font.pixelSize: Theme.fontSize
+                        elide: Text.ElideLeft
+                    }
+                    MouseArea {
+                        id: sArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        // pressionar não tira o foco do campo; o clique entra na pasta
+                        onPressed: e => e.accepted = true
+                        onClicked: { root.editing = false; root.submitted(modelData); root.closed() }
+                    }
+                }
+            }
+        }
     }
 }

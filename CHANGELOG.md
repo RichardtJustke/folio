@@ -2,6 +2,9 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.11
+- Barra de caminho (clique nela ou Ctrl+L): sugestões de pastas enquanto digita; Tab completa (prefixo comum ou a sugestão escolhida), ↑/↓ escolhem, Enter entra, Esc fecha a lista. Abre já com `~/…/` e a barra no fim, pronto para continuar digitando.
+
 ## Alpha 0.10
 - Lista com cabeçalho discreto: rótulos mais leves ("Modificado" no lugar de "Data de Modificação"), seta de ordenação pequena, e cada rótulo alinhado à sua coluna — "Nome" sobre o nome (depois do ícone), "Tamanho" à direita junto dos valores, "Tipo" sem cortar.
 - Linhas sem listras alternadas; seleção em cinza translúcido (como na grade) e realce suave ao passar o mouse.

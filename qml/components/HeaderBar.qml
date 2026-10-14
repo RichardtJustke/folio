@@ -75,6 +75,7 @@ Item {
         path: root.fileModel.path
         title: root.fileModel.title
         special: root.fileModel.isTrash || root.fileModel.isSearch
+        ops: root.ops
         onNavigate: p => root.navigator.go(p)
         onSubmitted: typed => root.openPath(typed)
         onClosed: root.focusView()
