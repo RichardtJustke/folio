@@ -75,6 +75,6 @@ jobs:
           GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
         run: |
           if [ "$GITHUB_REF_TYPE" = "tag" ]; then TAG="$GITHUB_REF_NAME"; else TAG="manual-${GITHUB_RUN_NUMBER}"; fi
-          gh release create "$TAG" Folio-x86_64.AppImage SHA256SUMS folio.svg \
+          gh release create "$TAG" Folio-x86_64.AppImage \
             --repo "$PUBLIC_REPO" --title "Folio ${TAG#v}" \
             --notes "Versão ${TAG#v}. Instalação: veja o README."
