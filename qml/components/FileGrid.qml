@@ -24,8 +24,8 @@ Item {
     readonly property real typeWidth: Math.min(200, Math.max(110, list.width * 0.2))
     readonly property real nameWidth: Math.max(160, list.width - dateWidth - sizeWidth - typeWidth)
 
-    readonly property var selection: { fileModel.selectionRevision; return fileModel.selectedPaths() }
-    readonly property var currentEntry: { fileModel.selectionRevision; fileModel.revision; return fileModel.entry(fileModel.currentIndex) }
+    readonly property var selection: fileModel.selectionRevision >= 0 ? fileModel.selectedPaths() : []
+    readonly property var currentEntry: fileModel.selectionRevision >= 0 && fileModel.revision >= 0 ? fileModel.entry(fileModel.currentIndex) : ({})
     readonly property bool singleDir: selection.length === 1 && currentEntry.isDir === true
 
     signal activate(var entry)
@@ -333,7 +333,7 @@ Item {
                             entry: modelData
                             view: root
                             width: root.cellWidth
-                            selected: { root.fileModel.selectionRevision; return root.fileModel.isSelected(modelData.index) }
+                            selected: root.fileModel.selectionRevision >= 0 && root.fileModel.isSelected(modelData.index)
                             renaming: root.fileModel.renamingPath === modelData.path
                         }
                     }
@@ -345,7 +345,7 @@ Item {
                     entry: rowLoader.items[0]
                     view: root
                     width: rowLoader.width
-                    selected: { root.fileModel.selectionRevision; return root.fileModel.isSelected(entry.index) }
+                    selected: root.fileModel.selectionRevision >= 0 && root.fileModel.isSelected(entry.index)
                     renaming: root.fileModel.renamingPath === entry.path
                 }
             }

@@ -359,7 +359,7 @@ Rectangle {
                     label: modelData.label
                     Rectangle {
                         id: pick
-                        readonly property string current: { root.appsRevision; return root.ops.defaultAppName(kindLine.modelData.mime) }
+                        readonly property string current: root.appsRevision >= 0 ? root.ops.defaultAppName(kindLine.modelData.mime) : ""
                         width: Math.min(220, Math.max(120, pickText.implicitWidth + 40)); height: 28; radius: 14
                         color: pickArea.containsMouse ? Theme.hover : Theme.pillBg
                         border.width: 1; border.color: Theme.border

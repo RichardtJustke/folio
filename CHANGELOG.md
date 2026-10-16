@@ -2,6 +2,10 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.20
+- Correção: o menu de contexto dos itens não enxergava a seleção no Qt 6.12. As ações (Copiar, Renomear, Propriedades, Mover para a Lixeira…) agiam sobre nada, e as opções de pasta (Abrir em Nova Aba, Colar na Pasta, Abrir Terminal Aqui, Adicionar aos Favoritos) sumiam. O mesmo valia para o "Padrão" de cada tipo nas Configurações.
+- Shift+F10 (ou a tecla Menu) abre o menu de contexto dos itens selecionados.
+
 ## Alpha 0.19
 - Painel de prévia (F3) redesenhado: prévia maior com cantos arredondados, nome e tipo, e uma fileira de ações rápidas (Abrir, Visualização Rápida, Copiar caminho, Propriedades).
 - Os detalhes ficam em cartões com ícones: Tamanho, Onde, Aponta para e Abre com; Criado, Modificado e Acessado; Acesso (permissões por extenso, ex.: "Só justke: leitura e escrita") e Etiquetas.

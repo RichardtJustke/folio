@@ -516,6 +516,7 @@ Window {
     Shortcut { sequences: [StandardKey.Copy]; enabled: win.ready; onActivated: fileOps.copy(fm.selectedPaths()) }
     Shortcut { sequences: [StandardKey.Cut]; enabled: win.ready && !fm.isTrash; onActivated: fileOps.cut(fm.selectedPaths()) }
     Shortcut { sequences: [StandardKey.Paste]; enabled: win.ready && !fm.isTrash; onActivated: fileOps.paste(fm.path) }
+    Shortcut { sequences: ["Shift+F10", "Menu"]; enabled: win.ready && fm.selectedCount > 0; onActivated: tab.view.openItemMenu() }
     Shortcut { sequences: [StandardKey.Undo]; enabled: win.ready; onActivated: fileOps.undo() }
     Shortcut { sequence: "Delete"; enabled: win.ready; onActivated: win.requestDelete(fm.selectedPaths(), false) }
     Shortcut { sequence: "Shift+Delete"; enabled: win.ready; onActivated: win.requestDelete(fm.selectedPaths(), true) }
