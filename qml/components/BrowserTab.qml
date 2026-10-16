@@ -27,7 +27,7 @@ Item {
 
     function activate(entry) {
         if (entry.isDir) nav.go(entry.path)
-        else if (entry.isArchive) fm.path = entry.path
+        else if (entry.isArchive) fm.path = entry.path + "::"
         else ops.open(entry.path)
     }
 

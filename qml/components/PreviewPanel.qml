@@ -35,9 +35,83 @@ Rectangle {
     border.color: Theme.border
     clip: true
 
+    signal openRequested(var entry)
+    signal quickLookRequested
+    signal propertiesRequested(var paths)
+
+    // "rw-r-----" por extenso: quem pode o quê
+    function accessLabel(mode) {
+        const lvl = (r, w) => r && w ? "leitura e escrita" : r ? "só leitura" : w ? "só escrita" : "sem acesso"
+        const owner = lvl(mode & 0o400, mode & 0o200)
+        const group = lvl(mode & 0o40, mode & 0o20)
+        const other = lvl(mode & 0o4, mode & 0o2)
+        if (!(mode & 0o66)) return "Só " + root.info.owner + ": " + owner
+        return root.info.owner + ": " + owner + "\nGrupo " + root.info.group + ": " + group + "\nOutros: " + other
+    }
+    readonly property string appName: info && !info.isDir ? ops.defaultAppName(info.mime) : ""
+
+    // linha de um cartão: ícone, rótulo pequeno e valor
+    component InfoRow: Item {
+        property string icon
+        property string label
+        property string value
+        visible: value !== ""
+        width: parent ? parent.width : 0
+        height: visible ? texts.height + 12 : 0
+        Rectangle { visible: parent.y > 0; width: parent.width; height: 1; color: Theme.border }
+        Image {
+            x: 0; y: 9
+            width: 14; height: 14
+            sourceSize: Qt.size(28, 28)
+            source: Theme.icon(parent.icon, Theme.textFaint)
+        }
+        Column {
+            id: texts
+            x: 23; y: 6
+            width: parent.width - 23
+            spacing: 1
+            Text { text: parent.parent.label; color: Theme.textFaint; font.pixelSize: 10 }
+            Text {
+                width: parent.width
+                text: parent.parent.value
+                color: Theme.text
+                font.pixelSize: 12
+                wrapMode: Text.WrapAnywhere
+                maximumLineCount: 4
+                elide: Text.ElideMiddle
+            }
+        }
+    }
+    component InfoCard: Rectangle {
+        default property alias rows: rowsCol.data
+        visible: rowsCol.height > 0
+        width: parent ? parent.width : 0
+        height: rowsCol.height + 4
+        radius: 10
+        color: Theme.overlay(Theme.light ? 0.04 : 0.045)
+        Column { id: rowsCol; x: 10; y: 2; width: parent.width - 20 }
+    }
+    component QuickButton: Rectangle {
+        property string icon
+        property string tip
+        signal clicked
+        width: 34; height: 30; radius: 8
+        color: qbArea.containsMouse ? Theme.buttonHover : Theme.buttonBg
+        Image {
+            anchors.centerIn: parent
+            width: 15; height: 15
+            sourceSize: Qt.size(30, 30)
+            source: Theme.icon(parent.icon, Theme.text)
+        }
+        MouseArea { id: qbArea; anchors.fill: parent; hoverEnabled: true; onClicked: parent.clicked() }
+        ToolTip.visible: qbArea.containsMouse
+        ToolTip.delay: 500
+        ToolTip.text: tip
+    }
+
     Flickable {
         anchors.fill: parent
-        anchors.margins: 14
+        anchors.margins: 12
         contentHeight: col.height
         boundsBehavior: Flickable.StopAtBounds
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
@@ -49,7 +123,7 @@ Rectangle {
 
             Item { // prévia
                 width: parent.width
-                height: Math.min(width, 220)
+                height: Math.round(width * 0.66)
                 Loader {
                     anchors.fill: parent
                     sourceComponent: {
@@ -66,67 +140,102 @@ Rectangle {
                 }
             }
 
-            Text {
+            Column {
                 width: parent.width
-                horizontalAlignment: Text.AlignHCenter
-                text: root.selected.length > 1 ? root.selected.length + " itens selecionados"
-                    : root.info ? root.info.name : ""
-                color: Theme.text
-                font.pixelSize: Theme.fontSize + 1
-                font.weight: Font.DemiBold
-                wrapMode: Text.WrapAnywhere
-                maximumLineCount: 3
-                elide: Text.ElideMiddle
-            }
-
-            Text {
-                visible: text !== ""
-                width: parent.width
-                horizontalAlignment: Text.AlignHCenter
-                text: root.selected.length > 1 ? Theme.sizeLabel(root.totalSize) + " em arquivos"
-                    : root.info && root.info.type ? root.info.type[0].toUpperCase() + root.info.type.slice(1) : ""
-                color: Theme.textDim
-                font.pixelSize: 12
-                elide: Text.ElideRight
-            }
-
-            Rectangle { visible: details.visible; width: parent.width; height: 1; color: Theme.border }
-
-            Column { // detalhes
-                id: details
-                visible: root.selected.length <= 1 && root.info !== null
-                width: parent.width
-                spacing: 8
-
-                component Detail: Column {
-                    property string label
-                    property string value
-                    visible: value !== ""
-                    width: parent ? parent.width : 0
-                    spacing: 1
-                    Text { text: parent.label; color: Theme.textFaint; font.pixelSize: 11 }
-                    Text {
-                        width: parent.width
-                        text: parent.value
-                        color: Theme.text
-                        font.pixelSize: 12
-                        wrapMode: Text.WrapAnywhere
-                        maximumLineCount: 3
-                        elide: Text.ElideMiddle
-                    }
+                spacing: 2
+                Text {
+                    width: parent.width
+                    horizontalAlignment: Text.AlignHCenter
+                    text: root.selected.length > 1 ? root.selected.length + " itens selecionados"
+                        : root.info ? root.info.name : ""
+                    color: Theme.text
+                    font.pixelSize: Theme.fontSize + 1
+                    font.weight: Font.DemiBold
+                    wrapMode: Text.WrapAnywhere
+                    maximumLineCount: 3
+                    elide: Text.ElideMiddle
                 }
+                Text {
+                    visible: text !== ""
+                    width: parent.width
+                    horizontalAlignment: Text.AlignHCenter
+                    text: root.selected.length > 1 ? Theme.sizeLabel(root.totalSize) + " em arquivos"
+                        : root.info && root.info.type ? root.info.type[0].toUpperCase() + root.info.type.slice(1) : ""
+                    color: Theme.textDim
+                    font.pixelSize: 11
+                    elide: Text.ElideRight
+                }
+            }
 
-                Detail {
+            Row { // ações rápidas
+                visible: root.info !== null || root.selected.length > 1
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: 8
+                QuickButton {
+                    visible: root.entry !== null
+                    icon: "document-open-symbolic"
+                    tip: "Abrir"
+                    onClicked: root.openRequested(root.entry)
+                }
+                QuickButton {
+                    visible: root.entry !== null
+                    icon: "view-reveal-symbolic"
+                    tip: "Visualização Rápida (Espaço)"
+                    onClicked: root.quickLookRequested()
+                }
+                QuickButton {
+                    icon: "edit-copy-symbolic"
+                    tip: "Copiar caminho"
+                    onClicked: root.ops.copyText(root.selected.length ? root.selected.join("\n") : root.info.path)
+                }
+                QuickButton {
+                    icon: "document-properties-symbolic"
+                    tip: "Propriedades (Alt+Enter)"
+                    onClicked: root.propertiesRequested(root.selected.length ? root.selected : [root.info.path])
+                }
+            }
+
+            InfoCard {
+                visible: root.selected.length <= 1 && root.info !== null
+                InfoRow {
+                    icon: "drive-harddisk-symbolic"
                     label: root.info && root.info.isDir ? "Itens" : "Tamanho"
                     value: !root.info ? ""
                          : root.info.isDir ? (root.entry ? Theme.itemsLabel(root.entry.itemCount) : Theme.itemsLabel(root.fileModel.count))
                          : Theme.sizeLabel(root.info.size)
                 }
-                Detail { label: "Modificado"; value: root.info ? Theme.dateLabel(root.info.modified) : "" }
-                Detail { label: "Criado"; value: root.info && root.info.created && !isNaN(root.info.created) ? Theme.dateLabel(root.info.created) : "" }
-                Detail { label: "Local"; value: root.info ? root.info.location : "" }
-                Detail { label: "Aponta para"; value: root.info && root.info.isSymlink ? root.info.target : "" }
-                Detail { label: "Permissões"; value: root.info ? root.info.permString : "" }
+                InfoRow { icon: "folder-symbolic"; label: "Onde"; value: root.info ? root.info.location : "" }
+                InfoRow { icon: "emblem-symbolic-link"; label: "Aponta para"; value: root.info && root.info.isSymlink ? root.info.target : "" }
+                InfoRow { icon: "application-x-executable-symbolic"; label: "Abre com"; value: root.appName }
+            }
+
+            InfoCard {
+                visible: root.selected.length <= 1 && root.info !== null
+                InfoRow {
+                    icon: "x-office-calendar-symbolic"
+                    label: "Criado"
+                    value: root.info && root.info.created && !isNaN(root.info.created) ? Theme.dateLabel(root.info.created) : ""
+                }
+                InfoRow { icon: "document-edit-symbolic"; label: "Modificado"; value: root.info ? Theme.dateLabel(root.info.modified) : "" }
+                InfoRow {
+                    icon: "document-open-recent-symbolic"
+                    label: "Acessado"
+                    value: root.info && root.info.accessed && !isNaN(root.info.accessed) ? Theme.dateLabel(root.info.accessed) : ""
+                }
+            }
+
+            InfoCard {
+                visible: root.selected.length <= 1 && root.info !== null
+                InfoRow {
+                    icon: "changes-prevent-symbolic"
+                    label: "Acesso"
+                    value: root.info ? root.accessLabel(root.info.mode) : ""
+                }
+                InfoRow {
+                    icon: "tag-symbolic"
+                    label: "Etiquetas"
+                    value: root.entry && root.entry.tags ? root.entry.tags.join(", ") : ""
+                }
             }
         }
     }
@@ -156,7 +265,7 @@ Rectangle {
     Component {
         id: textComp
         Rectangle {
-            radius: 8
+            radius: 10
             color: Theme.overlay(0.05)
             clip: true
             Text {

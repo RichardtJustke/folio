@@ -357,6 +357,9 @@ Window {
             visible: opacity > 0 && win.fm !== null
             Behavior on width { NumberAnimation { duration: Theme.dur(200); easing.type: Easing.OutCubic } }
             Behavior on opacity { NumberAnimation { duration: Theme.dur(160) } }
+            onOpenRequested: entry => { if (win.tab) win.tab.activate(entry) }
+            onQuickLookRequested: win.openQuickLook()
+            onPropertiesRequested: paths => win.showProperties(paths)
         }
         FileModel { id: emptyModel } // o painel precisa de um modelo mesmo sem abas
 

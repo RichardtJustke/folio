@@ -1,0 +1,187 @@
+<title>Folio Painel de Prévia</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: três propostas do painel lado a lado, na largura real (264px), sobre o vidro escuro do Folio */
+:root {
+  color-scheme: dark;
+  --page: #141416;
+  --win: #1c1c1e;
+  --panel: rgba(255,255,255,0.03);
+  --card: rgba(255,255,255,0.045);
+  --line: rgba(255,255,255,0.08);
+  --text: #ececec;
+  --dim: rgba(255,255,255,0.68);
+  --faint: rgba(255,255,255,0.44);
+  --accent: #3d8bff;
+  --accent-soft: rgba(61,139,255,0.16);
+  --html: #e8833a;
+  --font: "Noto Sans", "Inter", system-ui, sans-serif;
+  --mono: "JetBrains Mono", "DejaVu Sans Mono", monospace;
+}
+body { background: var(--page); color: var(--text); font-family: var(--font); }
+.wrap { padding-block: 28px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); max-width: 1180px; margin: 0 auto; }
+h1 { font-size: 20px; font-weight: 600; margin: 0 0 6px; }
+.lead { color: var(--dim); margin: 0 0 28px; max-width: 70ch; line-height: 1.5; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 28px; align-items: start; }
+.opt { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.opt h2 { margin: 0; font-size: 15px; font-weight: 600; display: flex; gap: 8px; align-items: baseline; }
+.opt h2 b { color: var(--accent); font-size: 13px; }
+.opt p { margin: 0; color: var(--dim); font-size: 13px; line-height: 1.45; }
+.frame { background: var(--win); border-radius: 14px; padding: 6px; width: 276px; max-width: 100%; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 14px; min-height: 620px; font-size: 12px; }
+
+/* prévia do HTML real */
+.thumb { border-radius: 10px; background: #f6f6f4; color: #222; padding: 12px; font-family: var(--mono); font-size: 7.5px; line-height: 1.5; height: 150px; overflow: hidden; position: relative; box-shadow: 0 6px 20px rgba(0,0,0,0.35); }
+.thumb .t1 { font-size: 13px; font-weight: 700; margin: 4px 0 6px; }
+.thumb a { color: #1a0dab; text-decoration: underline; }
+.thumb.small { height: 118px; }
+.thumb.wide { height: 168px; }
+.badge { position: absolute; right: 8px; bottom: 8px; background: var(--html); color: white; font-family: var(--font); font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 5px; letter-spacing: .04em; }
+
+.name { font-size: 13px; font-weight: 600; word-break: break-all; line-height: 1.35; }
+.center { text-align: center; }
+.type { color: var(--dim); font-size: 11.5px; }
+.sec { display: flex; flex-direction: column; gap: 2px; }
+.sec-t { color: var(--faint); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 4px; }
+.row { display: grid; grid-template-columns: 82px 1fr; gap: 8px; padding: 3px 0; }
+.row span:first-child { color: var(--faint); }
+.row span:last-child { color: var(--text); min-width: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.hr { height: 1px; background: var(--line); }
+.actions { display: flex; gap: 6px; margin-top: auto; }
+.btn { flex: 1; text-align: center; padding: 7px 0; border-radius: 8px; background: rgba(255,255,255,0.08); color: var(--text); font-size: 11.5px; }
+.btn.pri { background: var(--accent); color: white; }
+.dots { display: flex; gap: 5px; align-items: center; }
+.dot { width: 9px; height: 9px; border-radius: 50%; }
+.tag { display: inline-flex; gap: 5px; align-items: center; background: var(--card); padding: 3px 8px; border-radius: 999px; font-size: 11px; }
+
+/* B — cartões */
+.card { background: var(--card); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; }
+.irow { display: flex; gap: 9px; align-items: center; padding: 5px 0; }
+.irow + .irow { border-top: 1px solid var(--line); }
+.irow svg { flex: none; width: 14px; height: 14px; stroke: var(--faint); fill: none; stroke-width: 1.7; }
+.irow .k { color: var(--faint); font-size: 10.5px; }
+.irow .v { font-size: 12px; overflow-wrap: anywhere; }
+.irow > div { min-width: 0; }
+.qa { display: flex; justify-content: center; gap: 8px; }
+.qa div { width: 34px; height: 30px; border-radius: 8px; background: rgba(255,255,255,0.08); display: grid; place-items: center; }
+.qa svg { width: 15px; height: 15px; stroke: var(--text); fill: none; stroke-width: 1.7; }
+
+/* C — chips */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.chip { background: var(--card); border-radius: 999px; padding: 3px 9px; font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.chip.acc { background: var(--accent-soft); color: #9cc3ff; }
+.more { color: var(--accent); font-size: 11.5px; text-align: center; }
+.perm { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; }
+.perm span:nth-child(odd) { color: var(--faint); }
+.ok { color: #7fd48b; } .no { color: var(--faint); }
+
+.before { display: flex; gap: 10px; align-items: flex-start; color: var(--dim); font-size: 13px; line-height: 1.5; border-top: 1px solid var(--line); padding-top: 18px; margin-top: 36px; }
+</style>
+
+<div class="wrap">
+  <h1>Painel de prévia (F3): três propostas</h1>
+  <p class="lead">O mesmo arquivo do seu print, <code>favoritos_03_10_2026.html</code>, na largura real do painel. Todas trazem dados que o painel ainda não mostra (dono, último acesso, permissões por extenso, etiquetas, "abre com") e um botão para o diálogo de Propriedades completo. Escolha A, B ou C, ou misture partes.</p>
+
+  <div class="grid">
+
+    <!-- A -->
+    <section class="opt">
+      <h2><b>A</b> Inspetor</h2>
+      <p>Estilo "Obter informações" do macOS: rótulo à esquerda e valor à direita, agrupados em seções. É a mais densa e a mais fácil de ler na diagonal.</p>
+      <div class="frame"><div class="panel">
+        <div class="thumb small">Bookmarks<div class="t1">Bookmarks</div>Barra de favoritos<br><br><a>Richardt Justke</a><span class="badge">HTML</span></div>
+        <div>
+          <div class="name">favoritos_03_10_2026.html</div>
+          <div class="type">Documento HTML · 1,1 MB</div>
+        </div>
+        <div class="hr"></div>
+        <div class="sec">
+          <div class="sec-t">Informações</div>
+          <div class="row"><span>Tipo</span><span>Documento HTML</span></div>
+          <div class="row"><span>Tamanho</span><span>1,1 MB (1.148.032 bytes)</span></div>
+          <div class="row"><span>Onde</span><span>~/Documentos</span></div>
+          <div class="row"><span>Abre com</span><span>Firefox</span></div>
+        </div>
+        <div class="sec">
+          <div class="sec-t">Datas</div>
+          <div class="row"><span>Criado</span><span>03/10/2026 19:07</span></div>
+          <div class="row"><span>Modificado</span><span>03/10/2026 19:07</span></div>
+          <div class="row"><span>Acessado</span><span>Hoje, 18:40</span></div>
+        </div>
+        <div class="sec">
+          <div class="sec-t">Acesso</div>
+          <div class="row"><span>Dono</span><span>justke</span></div>
+          <div class="row"><span>Você</span><span>Leitura e escrita</span></div>
+          <div class="row"><span>Outros</span><span>Nenhum acesso</span></div>
+        </div>
+        <div class="sec">
+          <div class="sec-t">Etiquetas</div>
+          <div class="dots"><span class="tag"><i class="dot" style="background:#2f8cff"></i>Azul</span></div>
+        </div>
+        <div class="actions"><div class="btn pri">Abrir</div><div class="btn">Propriedades</div></div>
+      </div></div>
+    </section>
+
+    <!-- B -->
+    <section class="opt">
+      <h2><b>B</b> Cartões com ícones</h2>
+      <p>Prévia maior, ações rápidas logo abaixo do nome e os dados em dois cartões com ícones. Fica mais "app" e menos tabela.</p>
+      <div class="frame"><div class="panel">
+        <div class="thumb wide">Bookmarks<div class="t1">Bookmarks</div>Barra de favoritos<br><br><a>Richardt Justke</a><span class="badge">HTML</span></div>
+        <div class="center">
+          <div class="name">favoritos_03_10_2026.html</div>
+          <div class="type">Documento HTML</div>
+        </div>
+        <div class="qa">
+          <div title="Abrir"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></div>
+          <div title="Visualização Rápida"><svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></div>
+          <div title="Copiar caminho"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></div>
+          <div title="Propriedades"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></div>
+        </div>
+        <div class="card">
+          <div class="irow"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg><div><div class="k">Tamanho</div><div class="v">1,1 MB</div></div></div>
+          <div class="irow"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><div><div class="k">Onde</div><div class="v">~/Documentos</div></div></div>
+          <div class="irow"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg><div><div class="k">Abre com</div><div class="v">Firefox</div></div></div>
+        </div>
+        <div class="card">
+          <div class="irow"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg><div><div class="k">Criado</div><div class="v">03/10/2026 19:07</div></div></div>
+          <div class="irow"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg><div><div class="k">Modificado</div><div class="v">03/10/2026 19:07</div></div></div>
+          <div class="irow"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><div><div class="k">Acessado</div><div class="v">Hoje, 18:40</div></div></div>
+        </div>
+        <div class="card">
+          <div class="irow"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><div><div class="k">Acesso</div><div class="v">Só você (justke): leitura e escrita</div></div></div>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- C -->
+    <section class="opt">
+      <h2><b>C</b> Resumo + detalhes</h2>
+      <p>O essencial em etiquetas curtas logo abaixo do nome; o resto fica recolhido em "Mais detalhes". É a mais limpa e a que menos rola.</p>
+      <div class="frame"><div class="panel">
+        <div class="thumb">Bookmarks<div class="t1">Bookmarks</div>Barra de favoritos<br><br><a>Richardt Justke</a><span class="badge">HTML</span></div>
+        <div class="center" style="display:flex;flex-direction:column;gap:8px">
+          <div class="name">favoritos_03_10_2026.html</div>
+          <div class="chips"><span class="chip acc">HTML</span><span class="chip">1,1 MB</span><span class="chip">03/10/2026</span><span class="chip">~/Documentos</span></div>
+        </div>
+        <div class="hr"></div>
+        <div class="sec">
+          <div class="row"><span>Modificado</span><span>03/10/2026 19:07</span></div>
+          <div class="row"><span>Abre com</span><span>Firefox</span></div>
+          <div class="row"><span>Etiquetas</span><span class="dots"><i class="dot" style="background:#2f8cff"></i><i class="dot" style="background:#34c759"></i></span></div>
+        </div>
+        <div class="sec">
+          <div class="sec-t">Mais detalhes ▾</div>
+          <div class="row"><span>Criado</span><span>03/10/2026 19:07</span></div>
+          <div class="row"><span>Acessado</span><span>Hoje, 18:40</span></div>
+          <div class="row"><span>Dono</span><span>justke · grupo justke</span></div>
+          <div class="perm" style="margin-top:6px"><span>Você</span><span class="ok">lê e escreve</span><span>Grupo</span><span class="no">sem acesso</span><span>Outros</span><span class="no">sem acesso</span></div>
+        </div>
+        <div class="actions"><div class="btn">Propriedades…</div></div>
+      </div></div>
+    </section>
+
+  </div>
+
+  <div class="before"><span>Hoje:</span><span>prévia com bordas sem respiro, nome e tipo centralizados e os dados empilhados em pares rótulo/valor soltos, sem grupos e sem ações; dono, acesso, etiquetas e "abre com" não aparecem, e as permissões vêm em código (<code>rw-------</code>).</span></div>
+</div>

@@ -2,6 +2,11 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.19
+- Painel de prévia (F3) redesenhado: prévia maior com cantos arredondados, nome e tipo, e uma fileira de ações rápidas (Abrir, Visualização Rápida, Copiar caminho, Propriedades).
+- Os detalhes ficam em cartões com ícones: Tamanho, Onde, Aponta para e Abre com; Criado, Modificado e Acessado; Acesso (permissões por extenso, ex.: "Só justke: leitura e escrita") e Etiquetas.
+- Correção: abrir um arquivo compactado com duplo clique entra nele corretamente.
+
 ## Alpha 0.18
 - Vista em colunas (Ctrl+3 ou menu → "Colunas"): cada subpasta escolhida abre a coluna seguinte, com uma barra de caminho para voltar.
 - Lembra as abas e o tamanho/posição da janela: abrir o Folio sem caminho reabre as abas da última sessão (abrir uma pasta específica continua abrindo só ela).
