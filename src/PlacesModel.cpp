@@ -13,6 +13,21 @@
 namespace {
 const QSet<QByteArray> kNetworkFs = {"cifs", "smb3", "nfs", "nfs4", "fuse.sshfs", "sshfs", "fuse.rclone", "davfs"};
 
+QString formatFreeSpace(const QString &path)
+{
+    const QStorageInfo si(path);
+    if (!si.isValid() || !si.isReady())
+        return {};
+    const qint64 free = si.bytesFree();
+    if (free <= 0)
+        return {};
+    if (free >= 1024LL * 1024 * 1024)
+        return QStringLiteral("%1 GB livres").arg(free / (1024LL * 1024 * 1024));
+    if (free >= 1024 * 1024)
+        return QStringLiteral("%1 MB livres").arg(free / (1024 * 1024));
+    return QStringLiteral("%1 KB livres").arg(free / 1024);
+}
+
 bool isUserVolume(const QStorageInfo &v)
 {
     const auto root = v.rootPath();
@@ -53,6 +68,8 @@ QVariant PlacesModel::data(const QModelIndex &index, int role) const
     case EjectableRole: return p.ejectable;
     case DeviceRole: return p.device;
     case FavoriteRole: return p.favorite;
+    case FreeSpaceRole: return p.freeSpace;
+    case PlaceTypeRole: return p.type;
     }
     return {};
 }
@@ -60,7 +77,7 @@ QVariant PlacesModel::data(const QModelIndex &index, int role) const
 QHash<int, QByteArray> PlacesModel::roleNames() const
 {
     return {{NameRole, "name"}, {PathRole, "path"}, {IconRole, "icon"}, {GroupRole, "group"},
-            {EjectableRole, "ejectable"}, {DeviceRole, "device"}, {FavoriteRole, "favorite"}};
+            {EjectableRole, "ejectable"}, {DeviceRole, "device"}, {FavoriteRole, "favorite"}, {FreeSpaceRole, "freeSpace"}, {PlaceTypeRole, "placeType"}};
 }
 
 void PlacesModel::refresh()
@@ -88,7 +105,7 @@ QList<PlacesModel::Place> PlacesModel::loadStandard() const
         if (path.isEmpty() || path == QDir::homePath())
             path = QDir::homePath() + "/" + d.folder;
         QDir().mkpath(path);
-        out.append({QString::fromUtf8(d.name), QDir::cleanPath(path), QString::fromLatin1(d.icon), group, {}, false, false});
+        out.append({QString::fromUtf8(d.name), QDir::cleanPath(path), QString::fromLatin1(d.icon), group, {}, {}, {}, false, false});
     }
     return out;
 }
@@ -107,7 +124,7 @@ QList<PlacesModel::Place> PlacesModel::loadFavorites() const
         auto name = o.value("name").toString();
         if (name.isEmpty())
             name = QFileInfo(path).fileName();
-        out.append({name, path, o.value("icon").toString("folder-symbolic"), QStringLiteral("Favoritos"), {}, false, true});
+        out.append({name, path, o.value("icon").toString("folder-symbolic"), QStringLiteral("Favoritos"), {}, {}, {}, false, true});
     }
     return out;
 }
@@ -119,10 +136,11 @@ QList<PlacesModel::Place> PlacesModel::loadVolumes() const
     const QString fav = QStringLiteral("Favoritos");
     const auto trash = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "/Trash/files";
     QDir().mkpath(trash);
-    out.append({QStringLiteral("Lixeira"), trash, "user-trash-symbolic", fav, {}, false, false});
+    out.append({QStringLiteral("Lixeira"), trash, "user-trash-symbolic", fav, {}, {}, {}, false, false});
+    out.append({QStringLiteral("Recentes"), "folio:recent", "document-open-recent-symbolic", fav, {}, {}, {}, false, false});
 
-    out.append({QStringLiteral("Início"), QDir::homePath(), "user-home-symbolic", group, {}, false, false});
-    out.append({QStringLiteral("Computador"), "/", "computer-symbolic,drive-harddisk-symbolic", group, {}, false, false});
+    out.append({QStringLiteral("Início"), QDir::homePath(), "user-home-symbolic", group, {}, formatFreeSpace(QDir::homePath()), {}, false, false});
+    out.append({QStringLiteral("Computador"), "/", "computer-symbolic,drive-harddisk-symbolic", group, {}, formatFreeSpace("/"), {}, false, false});
 
     for (const auto &v : QStorageInfo::mountedVolumes()) {
         if (!v.isValid() || !v.isReady() || !isUserVolume(v))
@@ -134,11 +152,21 @@ QList<PlacesModel::Place> PlacesModel::loadVolumes() const
             name = QFileInfo(v.rootPath()).fileName();
         out.append({name, v.rootPath(),
                     net ? "folder-remote-symbolic" : removable ? "drive-removable-media-symbolic" : "drive-harddisk-symbolic",
-                    group, QString::fromLocal8Bit(v.device()), removable, false});
+                    group, QString::fromLocal8Bit(v.device()), formatFreeSpace(v.rootPath()), {}, removable, false});
     }
 
     out.append({QStringLiteral("Rede"), QStringLiteral("folio:network"),
-                "network-workgroup-symbolic,folder-remote-symbolic", group, {}, false, false});
+                "network-workgroup-symbolic,folder-remote-symbolic", group, {}, {}, {}, false, false});
+
+    // Smart folders (buscas salvas)
+    const QString smartGroup = QStringLiteral("Smart");
+    const auto cfg = Config::load();
+    const auto arr = cfg.value("smartFolders").toArray();
+    for (const auto &v : arr) {
+        const auto o = v.toObject();
+        out.append({o.value("name").toString(), QStringLiteral("folio:smart:") + o.value("query").toString(),
+                    o.value("icon").toString("search-symbolic"), smartGroup, {}, {}, {}, false, false});
+    }
     return out;
 }
 
@@ -155,7 +183,7 @@ void PlacesModel::addFavorite(const QString &path)
     if (isFavorite(path) || !QFileInfo(path).isDir())
         return;
     auto favs = loadFavorites();
-    favs.append({QFileInfo(path).fileName(), path, "folder-symbolic", {}, {}, false, true});
+    favs.append({QFileInfo(path).fileName(), path, "folder-symbolic", {}, {}, {}, {}, false, true});
     saveFavorites(favs);
 }
 
@@ -167,7 +195,7 @@ void PlacesModel::addFavoriteUrls(const QList<QUrl> &urls)
         const auto path = QDir::cleanPath(u.toLocalFile());
         if (!u.isLocalFile() || !QFileInfo(path).isDir() || isFavorite(path))
             continue;
-        favs.append({QFileInfo(path).fileName(), path, "folder-symbolic", {}, {}, false, true});
+        favs.append({QFileInfo(path).fileName(), path, "folder-symbolic", {}, {}, {}, {}, false, true});
         changed = true;
     }
     if (changed)
@@ -201,4 +229,80 @@ void PlacesModel::eject(const QString &device)
         proc->deleteLater();
     });
     proc->start("udisksctl", {"unmount", "-b", device});
+}
+
+QStringList PlacesModel::templates() const
+{
+    QStringList out;
+    const auto dir = QDir::homePath() + "/Modelos";
+    QDir d(dir);
+    if (!d.exists())
+        return out;
+    for (const auto &e : d.entryInfoList(QDir::Files | QDir::NoDotAndDotDot | QDir::Hidden))
+        out.append(e.absoluteFilePath());
+    return out;
+}
+
+QStringList PlacesModel::recentFiles() const
+{
+    QStringList out;
+    const QString xbel = QDir::homePath() + "/.local/share/recently-used.xbel";
+    QFile f(xbel);
+    if (!f.open(QIODevice::ReadOnly))
+        return out;
+    auto content = QString::fromUtf8(f.readAll());
+    QRegularExpression re("href=\"file://([^\"]+)\"");
+    auto it = re.globalMatch(content);
+    while (it.hasNext()) {
+        auto m = it.next();
+        QString path = QUrl::fromPercentEncoding(m.captured(1).toUtf8());
+        if (QFileInfo::exists(path))
+            out.append(path);
+    }
+    return out;
+}
+
+QVariantList PlacesModel::smartFolders() const
+{
+    QVariantList out;
+    const auto arr = Config::load().value("smartFolders").toArray();
+    for (const auto &v : arr) {
+        const auto o = v.toObject();
+        out.append(QVariantMap{
+            {"name", o.value("name").toString()},
+            {"query", o.value("query").toString()},
+            {"icon", o.value("icon").toString()},
+            {"path", QStringLiteral("folio:smart:") + o.value("query").toString()}
+        });
+    }
+    return out;
+}
+
+void PlacesModel::addSmartFolder(const QString &name, const QString &query, const QString &icon)
+{
+    if (name.isEmpty() || query.isEmpty())
+        return;
+    auto cfg = Config::load();
+    auto arr = cfg.value("smartFolders").toArray();
+    for (const auto &v : arr) {
+        if (v.toObject().value("query").toString() == query)
+            return;
+    }
+    arr.append(QJsonObject{{"name", name}, {"query", query}, {"icon", icon}});
+    cfg.insert("smartFolders", arr);
+    Config::save(cfg);
+    refresh();
+}
+
+void PlacesModel::removeSmartFolder(const QString &query)
+{
+    auto cfg = Config::load();
+    auto arr = cfg.value("smartFolders").toArray();
+    for (int i = arr.size() - 1; i >= 0; --i) {
+        if (arr.at(i).toObject().value("query").toString() == query)
+            arr.removeAt(i);
+    }
+    cfg.insert("smartFolders", arr);
+    Config::save(cfg);
+    refresh();
 }

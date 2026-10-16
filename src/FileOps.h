@@ -5,6 +5,7 @@
 #include <QQmlEngine>
 #include <QStringList>
 #include <QWaitCondition>
+#include <QElapsedTimer>
 
 #include <atomic>
 #include <functional>
@@ -17,6 +18,8 @@ class FileOps : public QObject
 
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
     Q_PROPERTY(qreal progress READ progress NOTIFY progressChanged)
+    Q_PROPERTY(qint64 bytesPerSec READ bytesPerSec NOTIFY speedChanged)
+    Q_PROPERTY(int etaSeconds READ etaSeconds NOTIFY speedChanged)
     Q_PROPERTY(QString busyLabel READ busyLabel NOTIFY busyChanged)
     Q_PROPERTY(bool canPaste READ canPaste NOTIFY canPasteChanged)
     Q_PROPERTY(bool canUndo READ canUndo NOTIFY undoChanged)
@@ -47,6 +50,8 @@ public:
 
     bool busy() const { return m_busy; }
     qreal progress() const { return m_progress; }
+    qint64 bytesPerSec() const { return m_bytesPerSec; }
+    int etaSeconds() const { return m_etaSeconds; }
     QString busyLabel() const { return m_busyLabel; }
     bool canPaste() const;
     bool canUndo() const { return !m_undo.isEmpty(); }
@@ -83,6 +88,9 @@ public:
 
     // ── extras estilo Nautilus ──
     Q_INVOKABLE QString createFile(const QString &parentDir);
+    // templates de ~/Modelos: cria um novo documento a partir de um deles (ou vazio)
+    Q_INVOKABLE QStringList templates() const;
+    Q_INVOKABLE QString newFromTemplate(const QString &templatePath, const QString &destDir);
     Q_INVOKABLE void makeLinks(const QStringList &paths);
     // liga a etiqueta em todos (ou desliga, se todos já têm); devolve se ficou ligada
     Q_INVOKABLE bool toggleTag(const QStringList &paths, const QString &tag);
@@ -90,6 +98,7 @@ public:
     Q_INVOKABLE void compress(const QStringList &paths, const QString &format); // "zip" | "tar.gz"
     Q_INVOKABLE void extract(const QString &archive);
     Q_INVOKABLE bool isArchive(const QString &path) const;
+    static bool isArchiveStatic(const QString &path);
     Q_INVOKABLE bool canZip() const;
     Q_INVOKABLE void copyText(const QString &text);
     Q_INVOKABLE void openNewWindow(const QString &path);
@@ -111,6 +120,7 @@ public:
 signals:
     void busyChanged();
     void progressChanged();
+    void speedChanged();
     void canPasteChanged();
     void undoChanged();
     void errorOccurred(const QString &message);
@@ -138,6 +148,12 @@ private:
     std::shared_ptr<JobState> m_job;
     QList<UndoEntry> m_undo;
     QString m_busyLabel;
+    qint64 m_bytesPerSec = 0;
+    int m_etaSeconds = -1;
+    qint64 m_bytesDone = 0;
+    qint64 m_bytesTotal = 0;
+    QElapsedTimer m_speedTimer;
+    qint64 m_lastBytes = 0;
     bool m_busy = false;
     qreal m_progress = 0;
 };

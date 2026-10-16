@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.21)
-project(folio VERSION 0.17.0 LANGUAGES CXX)
-set(FOLIO_VERSION_STRING "0.17")
+project(folio VERSION 0.18.0 LANGUAGES CXX)
+set(FOLIO_VERSION_STRING "0.18")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Quick QuickControls2 Concurrent Svg DBus)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Quick QuickControls2 Concurrent Svg DBus Multimedia)
 qt_standard_project_setup(REQUIRES 6.5)
 qt_policy(SET QTP0004 NEW)
 
@@ -51,6 +51,7 @@ qt_add_qml_module(folio
         qml/components/NavPill.qml
         qml/components/HeaderBar.qml
         qml/components/FileGrid.qml
+        qml/components/ColumnView.qml
         qml/components/FileTile.qml
         qml/components/SectionHeader.qml
         qml/components/FolderIcon.qml
@@ -87,7 +88,7 @@ target_include_directories(folio PRIVATE src)
 target_compile_definitions(folio PRIVATE FOLIO_VERSION="${FOLIO_VERSION_STRING}")
 
 target_link_libraries(folio PRIVATE
-    Qt6::Core Qt6::Gui Qt6::Quick Qt6::QuickControls2 Qt6::Concurrent Qt6::Svg Qt6::DBus
+    Qt6::Core Qt6::Gui Qt6::Quick Qt6::QuickControls2 Qt6::Concurrent Qt6::Svg Qt6::DBus Qt6::Multimedia
 )
 
 include(GNUInstallDirs)

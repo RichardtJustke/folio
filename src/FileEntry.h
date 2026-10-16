@@ -17,6 +17,8 @@ struct FileEntry {
     QString thumb;     // id para image://thumb/ ("" = sem miniatura)
     QString preview;   // "image" | "text" | "thumb" | "icon"
     QStringList tags;  // etiquetas de cor (user.xdg.tags)
+    QString extension; // extensão do arquivo (ex.: ".jpg"), vazia para pastas
+    bool isArchive = false; // .zip, .tar.gz, etc.
     QDateTime modified;
     qint64 size = 0;
     int itemCount = -1; // -1 para arquivos ou quando não contado

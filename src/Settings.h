@@ -36,6 +36,8 @@ class Settings : public QObject
     Q_PROPERTY(QString version READ version CONSTANT)
     Q_PROPERTY(QString stage READ stage CONSTANT)
     Q_PROPERTY(QString qtVersion READ qtVersion CONSTANT)
+    Q_PROPERTY(QVariantMap windowGeometry READ windowGeometry WRITE setWindowGeometry NOTIFY changed)
+    Q_PROPERTY(QVariantList savedTabs READ savedTabs WRITE setSavedTabs NOTIFY changed)
 
 public:
     explicit Settings(QObject *parent = nullptr);
@@ -65,6 +67,10 @@ public:
     QString version() const;
     QString stage() const { return QStringLiteral("alpha"); }
     QString qtVersion() const;
+    QVariantMap windowGeometry() const { return m_windowGeometry; }
+    void setWindowGeometry(const QVariantMap &v);
+    QVariantList savedTabs() const { return m_savedTabs; }
+    void setSavedTabs(const QVariantList &v);
 
     void setTheme(const QString &v);
     void setAccent(const QString &v);
@@ -123,4 +129,6 @@ private:
     bool m_legibility = true;
     bool m_reduceMotion = false;
     qreal m_animSpeed = 1.0;
+    QVariantMap m_windowGeometry;
+    QVariantList m_savedTabs;
 };

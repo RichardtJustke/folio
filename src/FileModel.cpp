@@ -13,6 +13,7 @@
 #include <QMimeDatabase>
 
 #include "Tags.h"
+#include "FileOps.h"
 #include <QStandardPaths>
 #include <QtConcurrent>
 
@@ -79,6 +80,10 @@ FileEntry makeEntry(const QFileInfo &fi, QDir::Filters filters, bool countChildr
     e.modified = fi.lastModified();
     e.section = sectionFor(e.modified, today);
     e.tags = Tags::read(e.path);
+    if (!e.isDir) {
+        const int dot = e.name.lastIndexOf('.');
+        e.extension = dot > 0 ? e.name.mid(dot) : QString();
+    }
     if (e.isDir) {
         if (countChildren)
             e.itemCount = QDir(e.path).entryList(filters).size();
@@ -97,6 +102,7 @@ FileEntry makeEntry(const QFileInfo &fi, QDir::Filters filters, bool countChildr
         e.icon = mime.iconName() + "," + mime.genericIconName() + ",text-x-generic";
         if (fi.isExecutable() && mime.name() == "application/octet-stream")
             e.icon.prepend("application-x-executable,");
+        e.isArchive = FileOps::isArchiveStatic(fi.absoluteFilePath());
         if (Thumbnailer::canThumbnail(e.mime))
             e.thumb = Thumbnailer::encodeId(e.path) + "/" + QString::number(e.modified.toSecsSinceEpoch());
         if (Thumbnailer::isReadableImage(e.mime))
@@ -185,12 +191,151 @@ QString trashFilesDir()
     return QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "/Trash/files";
 }
 
+// Lista o conteúdo de um arquivo compactado (.zip, .tar.gz, .tar, .7z) como se fosse uma pasta
+Listing listArchive(const QString &archivePath)
+{
+    Listing out;
+    const QFileInfo fi(archivePath);
+    if (!fi.exists() || !fi.isFile()) {
+        out.error = QStringLiteral("Arquivo não encontrado.");
+        return out;
+    }
+    const QString suffix = fi.suffix().toLower();
+
+    QString prog;
+    QStringList args;
+    if (suffix == "zip") {
+        if (QStandardPaths::findExecutable("unzip").isEmpty()) {
+            out.error = QStringLiteral("Instale 'unzip' para navegar em arquivos .zip");
+            return out;
+        }
+        prog = "unzip";
+        args = {"-l", archivePath};
+    } else {
+        if (QStandardPaths::findExecutable("bsdtar").isEmpty()) {
+            out.error = QStringLiteral("Instale 'bsdtar' para navegar em arquivos compactados");
+            return out;
+        }
+        prog = "bsdtar";
+        args = {"-tf", archivePath};
+    }
+
+    QProcess proc;
+    proc.start(prog, args);
+    if (!proc.waitForFinished(5000)) {
+        out.error = QStringLiteral("Não foi possível ler o arquivo compactado.");
+        return out;
+    }
+    const auto output = QString::fromLocal8Bit(proc.readAllStandardOutput());
+    const auto lines = output.split('\n', Qt::SkipEmptyParts);
+    const auto today = QDate::currentDate();
+
+    for (const auto &line : lines) {
+        const auto trimmed = line.trimmed();
+        if (trimmed.isEmpty())
+            continue;
+        if (trimmed.startsWith("Archive:") || trimmed.startsWith("  Length") || trimmed.startsWith(" --------"))
+            continue;
+        QString name;
+        if (suffix == "zip") {
+            const auto parts = trimmed.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+            if (parts.size() < 4)
+                continue;
+            name = parts.last();
+        } else {
+            name = trimmed;
+        }
+        if (name.endsWith('/'))
+            continue;
+        FileEntry e;
+        e.name = name;
+        e.path = archivePath + "::" + name; // caminho virtual dentro do arquivo
+        e.location = Config::contract(archivePath);
+        e.isDir = false;
+        e.isHidden = false;
+        e.isSymlink = false;
+        e.modified = QDateTime(today, QTime(0, 0));
+        e.size = 0;
+        e.itemCount = -1;
+        e.preview = "icon";
+        e.icon = "text-x-generic";
+        e.mime = "application/octet-stream";
+        e.typeName = "Arquivo";
+        e.section = DateSection::Older;
+        const int dot = e.name.lastIndexOf('.');
+        e.extension = dot > 0 ? e.name.mid(dot) : QString();
+        out.entries.append(e);
+    }
+    return out;
+}
+
+// Recentes: lê recently-used.xbel (freedesktop) e devolve os arquivos que ainda existem
+Listing listSmart(const QString &query)
+{
+    Listing out;
+    // smart folders: busca na pasta pessoal, filtrando por nome ou tag:xxx
+    const QString root = QDir::homePath();
+    const auto filters = filtersFor(false);
+    const auto today = QDate::currentDate();
+    const bool byTag = query.startsWith(QLatin1String("tag:"), Qt::CaseInsensitive);
+    const auto tag = byTag ? query.mid(4).trimmed() : QString();
+    QDirIterator it(root, filters, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        it.next();
+        const auto fi = it.fileInfo();
+        bool match;
+        if (byTag)
+            match = Tags::read(fi.absoluteFilePath()).contains(tag, Qt::CaseInsensitive);
+        else
+            match = fi.fileName().contains(query, Qt::CaseInsensitive);
+        if (!match)
+            continue;
+        FileEntry e = makeEntry(fi, filters, false, today);
+        e.location = Config::contract(fi.absolutePath());
+        out.entries.append(e);
+        if (out.entries.size() >= 500)
+            break;
+    }
+    return out;
+}
+
+Listing listRecent()
+{
+    Listing out;
+    const QString xbel = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "/recently-used.xbel";
+    QFile f(xbel);
+    if (!f.open(QIODevice::ReadOnly))
+        return out;
+    const auto content = QString::fromUtf8(f.readAll());
+    const QRegularExpression re("href=\"file://([^\"]+)\"");
+    auto it = re.globalMatch(content);
+    const auto today = QDate::currentDate();
+    QSet<QString> seen;
+    while (it.hasNext()) {
+        auto m = it.next();
+        const auto path = QUrl::fromPercentEncoding(m.captured(1).toUtf8());
+        if (seen.contains(path))
+            continue;
+        seen.insert(path);
+        QFileInfo fi(path);
+        if (!fi.exists())
+            continue;
+        FileEntry e = makeEntry(fi, filtersFor(false), false, today);
+        e.location = Config::contract(fi.absolutePath());
+        out.entries.append(e);
+        if (out.entries.size() >= 200)
+            break;
+    }
+    return out;
+}
+
 }
 
 FileModel::FileModel(QObject *parent) : QObject(parent), m_cancel(std::make_shared<std::atomic_bool>(false))
 {
     const auto cfg = Config::load();
     m_showHidden = cfg.value("showHidden").toBool();
+    m_showExtensions = cfg.value("showExtensions").toBool(true);
     m_groupByDate = cfg.value("groupByDate").toBool(true);
     m_sortKey = cfg.value("sortKey").toString("name");
     m_sortDesc = cfg.value("sortDescending").toBool(false);
@@ -228,7 +373,9 @@ void FileModel::setPath(const QString &path)
     if (!m_watcher.directories().isEmpty())
         m_watcher.removePaths(m_watcher.directories());
     m_path = clean;
-    m_watcher.addPath(m_path);
+    // caminhos virtuais (Recentes, Smart folders, arquivos compactados) não têm watcher
+    if (!m_path.startsWith("folio:") && !m_path.contains("::"))
+        m_watcher.addPath(m_path);
     m_selected.clear();
     m_current = -1;
     m_anchor = -1;
@@ -247,6 +394,10 @@ void FileModel::setPath(const QString &path)
 
 QString FileModel::title() const
 {
+    if (m_path.contains("::"))
+        return QFileInfo(m_path.section("::", 0, 0)).fileName() + " (arquivo compactado)";
+    if (m_path == "folio:recent")
+        return QStringLiteral("Recentes");
     if (m_path == "/")
         return QStringLiteral("Computador");
     if (m_path == QDir::homePath())
@@ -269,6 +420,15 @@ void FileModel::setShowHidden(bool v)
     persist("showHidden", v);
     emit showHiddenChanged();
     reload();
+}
+
+void FileModel::setShowExtensions(bool v)
+{
+    if (v == m_showExtensions)
+        return;
+    m_showExtensions = v;
+    persist("showExtensions", v);
+    emit showExtensionsChanged();
 }
 
 void FileModel::setGroupByDate(bool v)
@@ -374,6 +534,12 @@ void FileModel::reload()
     });
     if (m_recursive && !m_query.isEmpty())
         watcher->setFuture(QtConcurrent::run(searchTree, m_path, m_query, m_showHidden, m_cancel));
+    else if (m_path == "folio:recent")
+        watcher->setFuture(QtConcurrent::run(listRecent));
+    else if (m_path.startsWith("folio:smart:"))
+        watcher->setFuture(QtConcurrent::run(listSmart, m_path.mid(12)));
+    else if (m_path.contains("::"))
+        watcher->setFuture(QtConcurrent::run(listArchive, m_path.section("::", 0, 0)));
     else
         watcher->setFuture(QtConcurrent::run(listDirectory, m_path, m_showHidden));
 }

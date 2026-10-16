@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtMultimedia
 import Folio
 
 // Visualização rápida (Espaço): imagem, texto, miniatura ou ícone + metadados.
@@ -80,7 +81,10 @@ Item {
                 case "image": return root.entry.mime === "image/gif" ? gifComp : imageComp
                 case "text": return textComp
                 case "thumb": return thumbComp
-                default: return iconComp
+                default:
+                    if (root.entry.mime && (root.entry.mime.startsWith("video/") || root.entry.mime.startsWith("audio/")))
+                        return mediaComp
+                    return iconComp
                 }
             }
         }
@@ -164,6 +168,90 @@ Item {
                       : Settings.fileIcons === "system" ? Theme.icon(root.entry.icon) + "&pack=0"
                       : Theme.fileIcon(root.entry.icon, root.entry.name)
             }
+        }
+    }
+
+    // vídeo/áudio com controles simples
+    Component {
+        id: mediaComp
+        Item {
+            anchors.fill: parent
+
+            MediaPlayer {
+                id: player
+                source: root.ops.fileUrl(root.entry.path)
+                audioOutput: AudioOutput { id: audioOut; volume: 1.0 }
+                videoOutput: videoOut
+                onErrorOccurred: {
+                    // fallback: ícone grande se não puder tocar
+                    iconFallback.visible = true
+                    playBtn.visible = false
+                    pauseBtn.visible = false
+                }
+            }
+            VideoOutput {
+                id: videoOut
+                anchors.fill: parent
+                visible: player.hasVideo
+            }
+            FolderIcon {
+                id: iconFallback
+                visible: !player.hasVideo
+                anchors.centerIn: parent
+                width: 128; height: 128
+                glyph: ""
+            }
+            Image {
+                visible: !player.hasVideo
+                anchors.centerIn: parent
+                width: 128; height: 128
+                sourceSize: Qt.size(256, 256)
+                source: Theme.fileIcon(root.entry.icon, root.entry.name)
+            }
+
+            Row {
+                id: controls
+                anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 8 }
+                spacing: 8
+
+                Rectangle {
+                    id: playBtn
+                    width: 40; height: 32; radius: 16
+                    color: playArea.containsMouse ? Theme.accent : Theme.overlay(0.12)
+                    Image {
+                        anchors.centerIn: parent
+                        width: 16; height: 16
+                        sourceSize: Qt.size(32, 32)
+                        source: Theme.icon("media-playback-start-symbolic", "white")
+                    }
+                    MouseArea { id: playArea; anchors.fill: parent; hoverEnabled: true; onClicked: player.play() }
+                }
+                Rectangle {
+                    id: pauseBtn
+                    width: 40; height: 32; radius: 16
+                    color: pauseArea.containsMouse ? Theme.accent : Theme.overlay(0.12)
+                    Image {
+                        anchors.centerIn: parent
+                        width: 16; height: 16
+                        sourceSize: Qt.size(32, 32)
+                        source: Theme.icon("media-playback-pause-symbolic", "white")
+                    }
+                    MouseArea { id: pauseArea; anchors.fill: parent; hoverEnabled: true; onClicked: player.pause() }
+                }
+                Rectangle {
+                    width: 40; height: 32; radius: 16
+                    color: stopArea.containsMouse ? Theme.accent : Theme.overlay(0.12)
+                    Image {
+                        anchors.centerIn: parent
+                        width: 16; height: 16
+                        sourceSize: Qt.size(32, 32)
+                        source: Theme.icon("media-playback-stop-symbolic", "white")
+                    }
+                    MouseArea { id: stopArea; anchors.fill: parent; hoverEnabled: true; onClicked: player.stop() }
+                }
+            }
+
+            Component.onCompleted: player.play()
         }
     }
 }

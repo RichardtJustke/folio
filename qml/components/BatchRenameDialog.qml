@@ -2,16 +2,16 @@ import QtQuick
 import QtQuick.Controls
 import Folio
 
-// Renomear vários itens: substituir texto, adicionar antes/depois do nome, ou nome + número.
-// A extensão é preservada; a prévia mostra os primeiros resultados.
+// Renomear vários itens: substituir texto, adicionar antes/depois do nome, numerar,
+// regex ou mudança de caixa. A extensão é preservada; a prévia mostra os primeiros resultados.
 GlassPopup {
     id: root
 
     required property FileOps ops
     property var paths: []
-    property string mode: "replace" // replace | add | format
+    property string mode: "replace" // replace | add | format | regex | case
 
-    width: Math.min(460, Overlay.overlay ? Overlay.overlay.width - 40 : 460)
+    width: Math.min(500, Overlay.overlay ? Overlay.overlay.width - 40 : 500)
 
     function show(list) {
         paths = list
@@ -22,15 +22,25 @@ GlassPopup {
         addAfter = true
         baseField.text = ""
         startField.text = "1"
+        regexField.text = ""
+        regexReplaceField.text = ""
+        caseMode = "lower"
         open()
         findField.forceActiveFocus()
     }
 
     property bool addAfter: true
+    property string caseMode: "lower" // lower | upper | title
 
     function split(name) { // ["foto", ".jpg"]; pastas e ".ocultos" ficam sem extensão
         const dot = name.lastIndexOf(".")
         return dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ""]
+    }
+
+    function applyCase(stem) {
+        if (caseMode === "upper") return stem.toUpperCase()
+        if (caseMode === "title") return stem.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        return stem.toLowerCase()
     }
 
     function newName(path, i) {
@@ -40,6 +50,15 @@ GlassPopup {
             return findField.text ? stem.split(findField.text).join(replaceField.text) + ext : name
         if (mode === "add")
             return addAfter ? stem + addField.text + ext : addField.text + stem + ext
+        if (mode === "regex") {
+            if (!regexField.text) return name
+            try {
+                const re = new RegExp(regexField.text, "g")
+                return stem.replace(re, regexReplaceField.text) + ext
+            } catch (e) { return name }
+        }
+        if (mode === "case")
+            return applyCase(stem) + ext
         const start = parseInt(startField.text) || 0
         const digits = String(start + paths.length - 1).length
         const n = String(start + i).padStart(Math.max(2, digits), "0")
@@ -48,10 +67,15 @@ GlassPopup {
 
     readonly property var results: {
         // dependências explícitas dos campos
-        const deps = [mode, findField.text, replaceField.text, addField.text, addAfter, baseField.text, startField.text]
+        const deps = [mode, findField.text, replaceField.text, addField.text, addAfter,
+                      baseField.text, startField.text, regexField.text, regexReplaceField.text, caseMode]
         return deps && paths.map((p, i) => newName(p, i))
     }
     readonly property int changedCount: results.filter((n, i) => n !== paths[i].split("/").pop()).length
+    readonly property bool regexValid: {
+        if (mode !== "regex" || !regexField.text) return true
+        try { new RegExp(regexField.text); return true } catch (e) { return false }
+    }
 
     function accept() {
         if (changedCount === 0) { close(); return }
@@ -112,9 +136,12 @@ GlassPopup {
             Row {
                 id: modes
                 x: 2; y: 2
-                ModeButton { value: "replace"; label: "Substituir texto" }
-                ModeButton { value: "add"; label: "Adicionar texto" }
+                spacing: 0
+                ModeButton { value: "replace"; label: "Substituir" }
+                ModeButton { value: "add"; label: "Adicionar" }
                 ModeButton { value: "format"; label: "Numerar" }
+                ModeButton { value: "regex"; label: "Regex" }
+                ModeButton { value: "case"; label: "Caixa" }
             }
         }
 
@@ -149,6 +176,39 @@ GlassPopup {
                 placeholderText: "Início"
                 validator: IntValidator { bottom: 0; top: 999999 }
                 inputMethodHints: Qt.ImhDigitsOnly
+            }
+        }
+
+        Column {
+            visible: root.mode === "regex"
+            width: parent.width
+            spacing: 8
+            Field {
+                id: regexField
+                width: parent.width
+                placeholderText: "Padrão regex (ex.: IMG_(\\d+))"
+                font.family: "monospace"
+                color: root.regexValid ? Theme.text : Theme.danger
+            }
+            Field { id: regexReplaceField; width: parent.width; placeholderText: "Substituir por (use $1, $2…)" }
+            Text {
+                visible: !root.regexValid
+                width: parent.width
+                text: "⚠ Padrão regex inválido"
+                color: Theme.danger
+                font.pixelSize: 11
+            }
+        }
+
+        Column {
+            visible: root.mode === "case"
+            width: parent.width
+            spacing: 8
+            Row {
+                spacing: 6
+                Choice { label: "minúsculas"; on: root.caseMode === "lower"; onPicked: root.caseMode = "lower" }
+                Choice { label: "MAIÚSCULAS"; on: root.caseMode === "upper"; onPicked: root.caseMode = "upper" }
+                Choice { label: "Title Case"; on: root.caseMode === "title"; onPicked: root.caseMode = "title" }
             }
         }
 
@@ -204,7 +264,7 @@ GlassPopup {
             DialogButton {
                 text: root.changedCount ? "Renomear " + root.changedCount : "Renomear"
                 primary: true
-                enabled: root.changedCount > 0
+                enabled: root.changedCount > 0 && root.regexValid
                 onClicked: root.accept()
             }
         }

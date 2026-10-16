@@ -10,6 +10,7 @@ Item {
     property bool selected: false
     property bool ejectable: false
     property bool compact: false
+    property string freeSpace // "42 GB livres" (volumes montados)
     property string placePath // caminho que o item representa (alvo das animações de voo)
     property real iconScale: 1
 

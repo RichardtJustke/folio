@@ -11,9 +11,10 @@ Item {
     required property PlacesModel places
 
     readonly property bool listMode: fileModel.viewMode === "list"
+    readonly property bool columnMode: fileModel.viewMode === "column"
     readonly property bool showLocation: fileModel.isSearch && fileModel.searchRecursive
     readonly property int hMargin: 14
-    readonly property int columns: listMode ? 1 : Math.max(1, Math.floor(list.width / Theme.tileWidth))
+    readonly property int columns: listMode || columnMode ? 1 : Math.max(1, Math.floor(list.width / Theme.tileWidth))
     readonly property real cellWidth: list.width / columns
     readonly property real rowHeight: listMode ? Theme.listRowHeight : Theme.tileHeight
 
@@ -28,6 +29,7 @@ Item {
     readonly property bool singleDir: selection.length === 1 && currentEntry.isDir === true
 
     signal activate(var entry)
+    signal enterArchive(string path)
     signal newFolder
     signal openInNewTab(string path)
     signal revealInFolder(string path)
@@ -212,6 +214,7 @@ Item {
 
     ListView {
         id: list
+        visible: !root.columnMode
         anchors { left: parent.left; right: parent.right; top: listHeader.bottom; bottom: parent.bottom; leftMargin: root.hMargin; rightMargin: root.hMargin }
         clip: true
         boundsBehavior: Flickable.StopAtBounds
@@ -351,10 +354,30 @@ Item {
 
     Text {
         anchors.centerIn: parent
-        visible: !root.fileModel.loading && root.fileModel.count === 0
+        visible: !root.fileModel.loading && root.fileModel.count === 0 && !root.columnMode
         text: root.fileModel.error || (root.fileModel.isSearch ? "Nenhum resultado" : "Pasta vazia")
         color: Theme.textFaint
         font.pixelSize: 14
+    }
+
+    // ── vista em colunas (Miller columns) ──
+    ColumnView {
+        id: columnView
+        visible: root.columnMode
+        anchors.fill: parent
+        fileModel: root.fileModel
+        ops: root.ops
+        places: root.places
+        onActivate: entry => root.activate(entry)
+        onOpenInNewTab: path => root.openInNewTab(path)
+        onRequestDelete: (paths, permanent) => root.requestDelete(paths, permanent)
+        onRequestEmptyTrash: root.requestEmptyTrash()
+        onQuickLook: root.quickLook()
+        onShowProperties: paths => root.showProperties(paths)
+        onOpenWith: path => root.openWith(path)
+        onRenameMany: paths => root.renameMany(paths)
+        onPromptSelectPattern: root.promptSelectPattern()
+        onOpenTerminalHere: dir => root.openTerminalHere(dir)
     }
 
     Text { // aviso de limite na busca
@@ -381,6 +404,16 @@ Item {
             text: "Mostrar na Pasta"
             visible: root.showLocation && root.selection.length === 1
             onTriggered: root.revealInFolder(root.selection[0])
+        }
+        GlassMenuItem {
+            text: "Entrar no arquivo"
+            visible: root.selection.length === 1 && root.currentEntry.isArchive
+            onTriggered: root.enterArchive(root.selection[0])
+        }
+        GlassMenuItem {
+            text: "Extrair Aqui"
+            visible: root.fileModel.path.includes("::")
+            onTriggered: root.ops.extract(root.fileModel.path.section("::", 0, 0))
         }
         GlassMenuItem {
             text: "Abrir com…"
@@ -423,6 +456,11 @@ Item {
             text: "Criar Link"
             visible: !root.fileModel.isTrash
             onTriggered: root.ops.makeLinks(root.selection)
+        }
+        GlassMenuItem {
+            text: "Enviar por E-mail"
+            visible: !root.fileModel.isTrash && root.selection.length > 0
+            onTriggered: Qt.openUrlExternally("mailto:?subject=Arquivos&body=" + root.selection.join("%0D%0A"))
         }
         GlassMenuItem { text: "Copiar"; onTriggered: root.ops.copy(root.selection) }
         GlassMenuItem { text: "Recortar"; visible: !root.fileModel.isTrash; onTriggered: root.ops.cut(root.selection) }
@@ -470,6 +508,11 @@ Item {
         GlassMenuItem { text: "Nova Pasta"; visible: !root.fileModel.isTrash; onTriggered: root.newFolder() }
         GlassMenuItem { text: "Novo Arquivo"; visible: !root.fileModel.isTrash; onTriggered: root.newFile() }
         GlassMenuItem {
+            text: "Novo Documento…"
+            visible: !root.fileModel.isTrash
+            onTriggered: newDocMenu.popup()
+        }
+        GlassMenuItem {
             text: "Colar"
             visible: !root.fileModel.isTrash
             enabled: root.ops.canPaste
@@ -482,8 +525,9 @@ Item {
         }
         GlassMenuItem { text: "Esvaziar Lixeira…"; visible: root.fileModel.isTrash; onTriggered: root.requestEmptyTrash() }
         Separator {}
-        GlassMenuItem { text: "Ícones"; tick: !root.listMode; onTriggered: root.fileModel.viewMode = "grid" }
+        GlassMenuItem { text: "Ícones"; tick: !root.listMode && !root.columnMode; onTriggered: root.fileModel.viewMode = "grid" }
         GlassMenuItem { text: "Lista"; tick: root.listMode; onTriggered: root.fileModel.viewMode = "list" }
+        GlassMenuItem { text: "Colunas"; tick: root.columnMode; onTriggered: root.fileModel.viewMode = "column" }
         Separator {}
         GlassMenuItem { text: "Ordenar por Nome"; tick: root.fileModel.sortKey === "name"; onTriggered: root.fileModel.sortBy("name") }
         GlassMenuItem { text: "Ordenar por Data"; tick: root.fileModel.sortKey === "modified"; onTriggered: root.fileModel.sortBy("modified") }
@@ -499,6 +543,11 @@ Item {
             tick: root.fileModel.showHidden
             onTriggered: root.fileModel.showHidden = !root.fileModel.showHidden
         }
+        GlassMenuItem {
+            text: "Mostrar Extensões"
+            tick: root.fileModel.showExtensions
+            onTriggered: root.fileModel.showExtensions = !root.fileModel.showExtensions
+        }
         Separator {}
         GlassMenuItem { text: "Selecionar Tudo"; onTriggered: root.fileModel.selectAll() }
         GlassMenuItem { text: "Inverter Seleção"; onTriggered: root.fileModel.invertSelection() }
@@ -507,5 +556,27 @@ Item {
         GlassMenuItem { text: "Abrir Terminal Aqui"; shortcut: "F4"; onTriggered: root.ops.openTerminal(root.fileModel.path) }
         GlassMenuItem { text: "Copiar Caminho da Pasta"; onTriggered: root.ops.copyText(root.fileModel.path) }
         GlassMenuItem { text: "Propriedades"; onTriggered: root.showProperties([root.fileModel.path]) }
+    }
+
+    // templates de ~/Modelos: cria um documento novo a partir de um deles
+    GlassMenu {
+        id: newDocMenu
+        title: "Novo Documento"
+        GlassMenuItem {
+            text: "Documento vazio"
+            onTriggered: root.newFile()
+        }
+        Separator {}
+        Repeater {
+            model: root.ops ? root.ops.templates() : []
+            GlassMenuItem {
+                required property string modelData
+                text: modelData.split("/").pop()
+                onTriggered: {
+                    const p = root.ops.newFromTemplate(modelData, root.fileModel.path)
+                    if (p) root.fileModel.selectPath(p)
+                }
+            }
+        }
     }
 }

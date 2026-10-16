@@ -26,6 +26,18 @@ Item {
         else root.closed(i)
     }
 
+    function closeOthers(i) {
+        for (let idx = root.tabs.count - 1; idx >= 0; idx--) {
+            if (idx !== i) root.closed(idx)
+        }
+    }
+
+    function closeRight(i) {
+        for (let idx = root.tabs.count - 1; idx > i; idx--) {
+            root.closed(idx)
+        }
+    }
+
     readonly property int buttonsWidth: 2 * 30 + 6
     readonly property real tabWidth: Math.max(60, Math.min(200,
         (width - 28 - buttonsWidth - tabs.count * 6) / Math.max(1, tabs.count)))
@@ -77,8 +89,30 @@ Item {
                     id: area
                     anchors.fill: parent
                     hoverEnabled: true
-                    acceptedButtons: Qt.LeftButton | Qt.MiddleButton
-                    onClicked: e => e.button === Qt.MiddleButton ? root.requestClose(tab.index) : root.selected(tab.index)
+                    acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
+                    onClicked: e => {
+                        if (e.button === Qt.MiddleButton) {
+                            root.requestClose(tab.index)
+                        } else if (e.button === Qt.RightButton) {
+                            root.selected(tab.index)
+                            tabMenu.tabIdx = tab.index
+                            tabMenu.popup()
+                        } else {
+                            root.selected(tab.index)
+                        }
+                    }
+                    onPressAndHold: {
+                        // drag para reordenar abas
+                        if (root.tabs.count > 1) {
+                            dragTarget.index = tab.index
+                            dragTarget.title = tab.title
+                            dragTarget.visible = true
+                            dragTarget.x = tab.mapToItem(root, 0, 0).x
+                            dragTarget.y = tab.y
+                            dragTarget.opacity = 0.9
+                            tab.opacity = 0.3
+                        }
+                    }
                 }
 
                 Rectangle { // fechar
@@ -100,6 +134,63 @@ Item {
                     anchors.fill: parent
                     onEntered: root.selected(tab.index) // abre a aba ao passar com arquivos
                     onDropped: d => root.dropped(d, tab.index)
+                }
+            }
+        }
+
+        // aba fantasma para arrastar
+        Item {
+            id: dragTarget
+            property int index: -1
+            property string title: ""
+            visible: false
+            height: 28
+            z: 10
+            Rectangle {
+                anchors.fill: parent
+                radius: 14
+                color: Theme.selected
+                border.width: 1
+                border.color: Theme.accent
+                Text {
+                    anchors.centerIn: parent
+                    text: dragTarget.title
+                    color: Theme.text
+                    font.pixelSize: 12
+                    font.weight: Font.DemiBold
+                    elide: Text.ElideRight
+                }
+            }
+            MouseArea {
+                anchors.fill: parent
+                drag.target: parent
+                drag.axis: Drag.XAxis
+                onReleased: {
+                    dragTarget.visible = false
+                    // encontra a posição mais próxima para soltar
+                    const dropX = dragTarget.x + dragTarget.width / 2
+                    let targetIdx = dragTarget.index
+                    for (let j = 0; j < tabRepeater.count; j++) {
+                        const it = tabRepeater.itemAt(j)
+                        if (!it) continue
+                        const cx = it.x + tabRow.x + it.width / 2
+                        if (dropX < cx) { targetIdx = j; break }
+                        targetIdx = j + 1
+                    }
+                    if (targetIdx !== dragTarget.index && targetIdx >= 0 && targetIdx < tabRepeater.count) {
+                        // move a aba no ListModel
+                        const data = root.tabs.get(dragTarget.index)
+                        root.tabs.remove(dragTarget.index)
+                        root.tabs.insert(targetIdx > dragTarget.index ? targetIdx - 1 : targetIdx, data)
+                        if (root.currentIndex === dragTarget.index) {
+                            root.currentIndex = targetIdx > dragTarget.index ? targetIdx - 1 : targetIdx
+                        }
+                    }
+                    // restaura a opacidade
+                    for (let j = 0; j < tabRepeater.count; j++) {
+                        const it = tabRepeater.itemAt(j)
+                        if (it) it.opacity = 1
+                    }
                 }
             }
         }
@@ -133,5 +224,28 @@ Item {
             Rectangle { x: parent.width / 2 - 0.5; y: 0; width: 1.2; height: parent.height; color: parent.border.color }
         }
         MouseArea { id: splitArea; anchors.fill: parent; hoverEnabled: true; onClicked: root.toggleSplit() }
+    }
+
+    GlassMenu {
+        id: tabMenu
+        property int tabIdx: -1
+        GlassMenuItem {
+            text: "Fechar Aba"
+            onTriggered: root.requestClose(tabMenu.tabIdx)
+        }
+        GlassMenuItem {
+            text: "Fechar Outras Abas"
+            visible: root.tabs.count > 1
+            onTriggered: root.closeOthers(tabMenu.tabIdx)
+        }
+        GlassMenuItem {
+            text: "Fechar Abas à Direita"
+            visible: tabMenu.tabIdx < root.tabs.count - 1
+            onTriggered: root.closeRight(tabMenu.tabIdx)
+        }
+        GlassMenuItem {
+            text: "Nova Aba"
+            onTriggered: root.newTab()
+        }
     }
 }

@@ -27,6 +27,7 @@ Item {
 
     function activate(entry) {
         if (entry.isDir) nav.go(entry.path)
+        else if (entry.isArchive) fm.path = entry.path
         else ops.open(entry.path)
     }
 
@@ -88,6 +89,7 @@ Item {
         onRenameMany: paths => root.renameMany(paths)
         onPromptSelectPattern: root.promptSelectPattern()
         onOpenTerminalHere: dir => root.ops.openTerminal(dir)
+        onEnterArchive: path => fm.path = path + "::"
         onOpenInNewTab: path => root.openInNewTab(path)
         onRevealInFolder: path => root.reveal(path)
         onRequestDelete: (paths, permanent) => root.requestDelete(paths, permanent)

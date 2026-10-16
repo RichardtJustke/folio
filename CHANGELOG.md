@@ -2,6 +2,18 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.18
+- Vista em colunas (Ctrl+3 ou menu → "Colunas"): cada subpasta escolhida abre a coluna seguinte, com uma barra de caminho para voltar.
+- Lembra as abas e o tamanho/posição da janela: abrir o Folio sem caminho reabre as abas da última sessão (abrir uma pasta específica continua abrindo só ela).
+- Abas: arrastar para reordenar e menu de contexto (Nova Aba, Fechar, Fechar Outras, Fechar à Direita).
+- Arquivos compactados (.zip, .tar.gz, .tar, .7z): "Entrar no arquivo" lista o conteúdo como uma pasta; dentro dele, "Extrair Aqui".
+- Barra lateral: Recentes, pastas inteligentes (buscas salvas por nome ou `tag:`) e espaço livre dos volumes.
+- "Novo Documento…" a partir dos modelos de `~/Modelos`; "Enviar por E-mail" no menu de contexto.
+- Ctrl+E mostra/oculta as extensões dos arquivos.
+- Renomear vários: modos **Regex** (com `$1`, `$2`…) e **Caixa** (minúsculas, MAIÚSCULAS, Title Case).
+- Visualização Rápida toca vídeo e áudio (Qt Multimedia).
+- Cópias mostram velocidade e tempo restante; o aviso de conclusão tem o botão "Desfazer".
+
 ## Alpha 0.17
 - Configurações → Comportamento → "Janela única" (desligada por padrão): abrir o Folio de novo (Super+E, `xdg-open`, outros apps) usa a janela aberta, numa aba nova, em vez de abrir outra janela. Ctrl+N continua abrindo uma janela separada.
 - Os pedidos passam pela interface D-Bus `io.github.richardtjustke.Folio` da primeira instância; a nova sai em menos de 0,1 s.

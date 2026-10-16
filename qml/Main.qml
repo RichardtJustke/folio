@@ -18,6 +18,41 @@ Window {
 
     readonly property bool maximized: visibility === Window.Maximized || visibility === Window.FullScreen
 
+    // ── estado da janela ──
+    Component.onCompleted: {
+        // restaura geometria salva
+        const geom = Settings.windowGeometry
+        if (geom && geom.x !== undefined) {
+            x = geom.x; y = geom.y; width = geom.w; height = geom.h
+            if (geom.max) showMaximized()
+        }
+        // sem caminho na linha de comando, reabre as abas da última sessão
+        const explicitPath = Qt.application.arguments.slice(1).some(a => !a.startsWith("--"))
+        const savedTabs = Settings.savedTabs
+        let active = 0
+        if (!explicitPath && savedTabs) {
+            for (const t of savedTabs) {
+                if (!t.path) continue
+                if (t.active) active = tabs.count
+                tabs.append({ startPath: t.path, revealPath: "", title: t.title || "" })
+            }
+        }
+        if (tabs.count > 0) selectTab(active)
+        else newTab(fileOps.startPath(), fileOps.startReveal())
+        if (Qt.application.arguments.includes("--settings")) settingsOpen = true
+    }
+    Component.onDestruction: {
+        // salva geometria
+        Settings.windowGeometry = { x: x, y: y, w: width, h: height, max: maximized }
+        // salva abas
+        const tabState = []
+        for (let i = 0; i < tabs.count; i++) {
+            const t = tabs.get(i)
+            tabState.push({ path: t.startPath, reveal: t.revealPath || "", title: t.title || "", active: i === currentTab })
+        }
+        Settings.savedTabs = tabState
+    }
+
     // ── layout responsivo ──
     // auto: barra lateral cheia (≥860), só ícones (≥560) ou oculta
     readonly property string sidebarState: {
@@ -130,10 +165,6 @@ Window {
     function focusView() { if (tab) tab.view.forceActiveFocus() }
 
     onCurrentTabChanged: Qt.callLater(focusView)
-    Component.onCompleted: {
-        newTab(fileOps.startPath(), fileOps.startReveal())
-        if (Qt.application.arguments.includes("--settings")) settingsOpen = true
-    }
 
     // "Mostrar na pasta" de outros apps (org.freedesktop.FileManager1)
     Connections {
@@ -162,7 +193,11 @@ Window {
     FileOps {
         id: fileOps
         onErrorOccurred: msg => { toast.show(msg, true); toast.shake(); if (win.tab && win.fm) win.tab.view.shake(win.fm.selectedPaths()) }
-        onFinished: msg => toast.show(msg)
+        onFinished: msg => {
+            const canUndo = fileOps.canUndo
+            const label = fileOps.undoLabel
+            toast.show(msg, false, canUndo ? (label || "Desfazer") : "", canUndo ? () => fileOps.undo() : null)
+        }
         onConflict: (name, dir, isDir) => conflictDialog.ask(name, dir, isDir)
         onServerConnected: path => { connectDialog.close(); nav.go(path) }
     }
@@ -493,6 +528,7 @@ Window {
     Shortcut { sequence: "Alt+Up"; enabled: win.ready; onActivated: nav.up() }
     Shortcut { sequence: "Alt+Home"; enabled: win.ready; onActivated: nav.go("~") }
     Shortcut { sequence: "Ctrl+H"; enabled: win.ready; onActivated: fm.showHidden = !fm.showHidden }
+    Shortcut { sequence: "Ctrl+E"; enabled: win.ready; onActivated: fm.showExtensions = !fm.showExtensions }
     Shortcut { sequences: [StandardKey.SelectAll]; enabled: win.ready; onActivated: fm.selectAll() }
     Shortcut { sequence: "Ctrl+Shift+N"; enabled: win.ready && !fm.isTrash; onActivated: tab.newFolder() }
     Shortcut { sequences: ["F5", "Ctrl+R"]; enabled: win.ready; onActivated: fm.reload() }
@@ -514,6 +550,7 @@ Window {
     Shortcut { sequence: "Ctrl+Alt+N"; enabled: win.ready && !fm.isTrash; onActivated: tab.newFile() }
     Shortcut { sequence: "Ctrl+1"; enabled: win.ready; onActivated: fm.viewMode = "grid" }
     Shortcut { sequence: "Ctrl+2"; enabled: win.ready; onActivated: fm.viewMode = "list" }
+    Shortcut { sequence: "Ctrl+3"; enabled: win.ready; onActivated: fm.viewMode = "column" }
     Shortcut { // terminal na pasta atual (na busca: na pasta do item selecionado)
         sequence: "F4"
         enabled: fm !== null && !fm.isTrash

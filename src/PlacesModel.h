@@ -11,10 +11,12 @@ class PlacesModel : public QAbstractListModel
     QML_ELEMENT
 
 public:
-    enum Roles { NameRole = Qt::UserRole + 1, PathRole, IconRole, GroupRole, EjectableRole, DeviceRole, FavoriteRole };
+    enum Roles { NameRole = Qt::UserRole + 1, PathRole, IconRole, GroupRole, EjectableRole, DeviceRole, FavoriteRole, FreeSpaceRole, PlaceTypeRole };
 
     struct Place {
         QString name, path, icon, group, device;
+        QString freeSpace; // "42 GB livres"
+        QString type; // "volume" | "favorite" | "standard" | "template" | "recent"
         bool ejectable = false;
         bool favorite = false;
     };
@@ -31,6 +33,11 @@ public:
     Q_INVOKABLE bool isFavorite(const QString &path) const;
     Q_INVOKABLE void eject(const QString &device);
     Q_INVOKABLE void refresh();
+    Q_INVOKABLE QStringList templates() const; // arquivos em ~/Modelos
+    Q_INVOKABLE QStringList recentFiles() const; // itens do recently-used.xbel
+    Q_INVOKABLE void addSmartFolder(const QString &name, const QString &query, const QString &icon);
+    Q_INVOKABLE void removeSmartFolder(const QString &query);
+    Q_INVOKABLE QVariantList smartFolders() const;
 
 signals:
     void errorOccurred(const QString &message);

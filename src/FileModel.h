@@ -21,6 +21,7 @@ class FileModel : public QObject
     Q_PROPERTY(QString title READ title NOTIFY pathChanged)
     Q_PROPERTY(bool isTrash READ isTrash NOTIFY pathChanged)
     Q_PROPERTY(bool showHidden READ showHidden WRITE setShowHidden NOTIFY showHiddenChanged)
+    Q_PROPERTY(bool showExtensions READ showExtensions WRITE setShowExtensions NOTIFY showExtensionsChanged)
     Q_PROPERTY(bool groupByDate READ groupByDate WRITE setGroupByDate NOTIFY groupByDateChanged)
     Q_PROPERTY(QString sortKey READ sortKey NOTIFY sortChanged)
     Q_PROPERTY(bool sortDescending READ sortDescending NOTIFY sortChanged)
@@ -49,6 +50,8 @@ public:
     bool isTrash() const;
     bool showHidden() const { return m_showHidden; }
     void setShowHidden(bool v);
+    bool showExtensions() const { return m_showExtensions; }
+    void setShowExtensions(bool v);
     bool groupByDate() const { return m_groupByDate; }
     void setGroupByDate(bool v);
     QString sortKey() const { return m_sortKey; }
@@ -97,6 +100,7 @@ public:
 signals:
     void pathChanged();
     void showHiddenChanged();
+    void showExtensionsChanged();
     void groupByDateChanged();
     void sortChanged();
     void viewModeChanged();
@@ -142,6 +146,7 @@ private:
     int m_selectionRevision = 0;
     int m_revision = 0;
     bool m_showHidden = false;
+    bool m_showExtensions = true;
     bool m_groupByDate = true;
     bool m_sortDesc = false;
     bool m_recursive = false;

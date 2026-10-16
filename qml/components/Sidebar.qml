@@ -111,6 +111,25 @@ Rectangle {
 
         footer: Column {
             width: ListView.view.width
+            // ── Espaço Livre ──
+            Repeater {
+                model: root.places
+                delegate: Item {
+                    required property var model
+                    // só mostra o espaço livre para volumes montados (grupo "Locais" exceto Computador)
+                    visible: model.freeSpace && !model.path.startsWith("/") && model.path !== "/" && model.group === "Locais"
+                    width: parent.width
+                    height: visible ? 16 : 0
+                    Text {
+                        visible: !root.compact
+                        anchors { left: parent.left; leftMargin: 48; right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                        text: model.freeSpace || ""
+                        color: Theme.textFaint
+                        font.pixelSize: 10
+                        elide: Text.ElideRight
+                    }
+                }
+            }
             Item { // título "Etiquetas" (no modo só-ícones, um divisor)
                 width: parent.width
                 height: root.compact ? 16 : 30
@@ -163,6 +182,19 @@ Rectangle {
                 icon: "network-server-symbolic,folder-remote-symbolic"
                 onClicked: root.connectServer()
             }
+            // ── Smart Folders ──
+            Repeater {
+                model: root.places.smartFolders()
+                delegate: SidebarItem {
+                    width: parent.width
+                    compact: root.compact
+                    name: modelData.name
+                    icon: modelData.icon
+                    placePath: modelData.path
+                    selected: modelData.path === root.currentPath
+                    onClicked: root.navigate(modelData.path)
+                }
+            }
             SidebarItem {
                 width: parent.width
                 compact: root.compact
@@ -181,6 +213,7 @@ Rectangle {
             name: model.name
             icon: model.icon
             ejectable: model.ejectable
+            freeSpace: model.freeSpace
             selected: model.path === root.currentPath
             onClicked: root.navigate(model.path)
             onEjectClicked: root.places.eject(model.device)

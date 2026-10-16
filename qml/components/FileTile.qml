@@ -95,7 +95,16 @@ Item {
                     id: name
                     anchors.centerIn: parent
                     width: Math.min(root.width - 18, implicitWidth)
-                    text: root.entry.name
+                    text: {
+                        const fm = root.view.fileModel
+                        if (fm && fm.showExtensions && root.entry.extension && !root.entry.isDir)
+                            return root.entry.name
+                        if (fm && !fm.showExtensions && root.entry.extension && !root.entry.isDir) {
+                            const dot = root.entry.name.lastIndexOf(".")
+                            return dot > 0 ? root.entry.name.slice(0, dot) : root.entry.name
+                        }
+                        return root.entry.name
+                    }
                     color: root.selected ? "white" : Theme.text
                     font.pixelSize: 12
                     horizontalAlignment: Text.AlignHCenter

@@ -123,6 +123,8 @@ QVariantMap RowModel::entryToMap(const FileEntry &e, int index)
         {"path", e.path},
         {"icon", e.icon},
         {"glyph", e.glyph},
+        {"extension", e.extension},
+        {"isArchive", e.isArchive},
         {"isDir", e.isDir},
         {"isHidden", e.isHidden},
         {"isSymlink", e.isSymlink},

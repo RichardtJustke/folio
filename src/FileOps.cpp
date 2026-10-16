@@ -385,7 +385,13 @@ void FileOps::transfer(const QStringList &sources, const QString &destDir, bool 
     if (sources.isEmpty())
         return;
     const auto dest = QDir::cleanPath(destDir);
-    Job job = [this, sources, dest, move](JobState &state, auto progress) {
+    // calcula o total de bytes antecipadamente para ETA
+    qint64 totalBytes = 0;
+    for (const auto &s : sources)
+        totalBytes += (move && sameDevice(s, dest)) ? 1 : treeSize(s);
+    m_bytesTotal = totalBytes;
+
+    Job job = [this, sources, dest, move, totalBytes](JobState &state, auto progress) {
         JobResult res;
         qint64 total = 0, done = 0;
         for (const auto &s : sources)
@@ -745,13 +751,41 @@ void FileOps::setBusy(bool b, const QString &label)
         return;
     m_busy = b;
     m_busyLabel = label;
+    if (b) {
+        m_bytesPerSec = 0;
+        m_etaSeconds = -1;
+        m_bytesDone = 0;
+        m_bytesTotal = 0;
+        m_lastBytes = 0;
+        m_speedTimer.invalidate();
+    } else {
+        m_bytesPerSec = 0;
+        m_etaSeconds = -1;
+    }
     emit busyChanged();
+    emit speedChanged();
 }
 
 void FileOps::setProgress(qreal p)
 {
     m_progress = p;
     emit progressChanged();
+    // atualiza velocidade a cada ~1s
+    if (!m_speedTimer.isValid() || m_speedTimer.hasExpired(1000)) {
+        const auto elapsed = m_speedTimer.isValid() ? m_speedTimer.elapsed() : 0;
+        if (elapsed > 0 && m_bytesTotal > 0) {
+            const qint64 done = qint64(m_progress * m_bytesTotal);
+            const qint64 delta = done - m_lastBytes;
+            m_bytesPerSec = delta * 1000 / elapsed;
+            m_lastBytes = done;
+            if (m_bytesPerSec > 0 && m_progress > 0 && m_progress < 1)
+                m_etaSeconds = int((m_bytesTotal - done) / m_bytesPerSec);
+            else
+                m_etaSeconds = -1;
+            emit speedChanged();
+        }
+        m_speedTimer.restart();
+    }
 }
 
 QString FileOps::uriList(const QStringList &paths) const
@@ -909,6 +943,37 @@ QString FileOps::createFile(const QString &parentDir)
     return target;
 }
 
+QStringList FileOps::templates() const
+{
+    QStringList out;
+    const auto dir = QDir::homePath() + "/Modelos";
+    QDir d(dir);
+    if (!d.exists())
+        return out;
+    for (const auto &e : d.entryInfoList(QDir::Files | QDir::NoDotAndDotDot | QDir::Hidden))
+        out.append(e.absoluteFilePath());
+    return out;
+}
+
+QString FileOps::newFromTemplate(const QString &templatePath, const QString &destDir)
+{
+    const QFileInfo tfi(templatePath);
+    if (!tfi.exists()) {
+        emit errorOccurred(QStringLiteral("Modelo não encontrado"));
+        return {};
+    }
+    QString target = destDir + "/" + tfi.fileName();
+    for (int n = 2; QFileInfo::exists(target); ++n)
+        target = destDir + QStringLiteral("/%1 %2").arg(tfi.completeBaseName()).arg(n) + (tfi.suffix().isEmpty() ? QString() : "." + tfi.suffix());
+    if (!QFile::copy(templatePath, target)) {
+        emit errorOccurred(QStringLiteral("Não foi possível criar o documento"));
+        return {};
+    }
+    QFile::setPermissions(target, QFile::permissions(target) | QFileDevice::WriteOwner);
+    emit finished(QStringLiteral("Documento criado"));
+    return target;
+}
+
 void FileOps::makeLinks(const QStringList &paths)
 {
     int ok = 0;
@@ -934,6 +999,12 @@ bool FileOps::canZip() const
 }
 
 bool FileOps::isArchive(const QString &path) const
+{
+    const QFileInfo fi(path);
+    return fi.isFile() && kArchiveSuffixes.contains(fi.suffix().toLower());
+}
+
+bool FileOps::isArchiveStatic(const QString &path)
 {
     const QFileInfo fi(path);
     return fi.isFile() && kArchiveSuffixes.contains(fi.suffix().toLower());

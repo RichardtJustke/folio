@@ -11,10 +11,13 @@
 #include <QIcon>
 #include <QProcess>
 #include <QJsonValue>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QVariantMap>
 #include <QtGlobal>
 
 #ifndef FOLIO_VERSION
-#define FOLIO_VERSION "0.17"
+#define FOLIO_VERSION "0.18"
 #endif
 
 Settings::Settings(QObject *parent) : QObject(parent)
@@ -40,6 +43,25 @@ Settings::Settings(QObject *parent) : QObject(parent)
     m_legibility = c.value("legibility").toBool(m_legibility);
     m_reduceMotion = c.value("reduceMotion").toBool(m_reduceMotion);
     m_animSpeed = qBound(0.5, c.value("animationSpeed").toDouble(m_animSpeed), 2.0);
+    // restaura geometria e abas
+    if (c.contains("windowGeometry")) {
+        const auto geom = c.value("windowGeometry").toObject();
+        QVariantMap g;
+        for (auto it = geom.begin(); it != geom.end(); ++it)
+            g.insert(it.key(), it.value().toVariant());
+        m_windowGeometry = g;
+    }
+    if (c.contains("savedTabs")) {
+        QVariantList tabs;
+        for (const auto &v : c.value("savedTabs").toArray()) {
+            QVariantMap t;
+            const auto o = v.toObject();
+            for (auto it = o.begin(); it != o.end(); ++it)
+                t.insert(it.key(), it.value().toVariant());
+            tabs.append(t);
+        }
+        m_savedTabs = tabs;
+    }
     if (!m_fontFamily.isEmpty())
         QGuiApplication::setFont(QFont(m_fontFamily));
 }
@@ -94,6 +116,37 @@ void Settings::setSingleWindow(bool v) { set(m_singleWindow, v, "singleWindow");
 void Settings::setLegibility(bool v) { set(m_legibility, v, "legibility"); }
 void Settings::setReduceMotion(bool v) { set(m_reduceMotion, v, "reduceMotion"); }
 void Settings::setAnimationSpeed(qreal v) { set(m_animSpeed, qBound(0.5, v, 2.0), "animationSpeed"); }
+
+void Settings::setWindowGeometry(const QVariantMap &v)
+{
+    if (m_windowGeometry == v) return;
+    m_windowGeometry = v;
+    auto cfg = Config::load();
+    QJsonObject geom;
+    for (auto it = v.begin(); it != v.end(); ++it)
+        geom.insert(it.key(), QJsonValue::fromVariant(it.value()));
+    cfg.insert("windowGeometry", geom);
+    Config::save(cfg);
+    emit changed();
+}
+
+void Settings::setSavedTabs(const QVariantList &v)
+{
+    if (m_savedTabs == v) return;
+    m_savedTabs = v;
+    auto cfg = Config::load();
+    QJsonArray arr;
+    for (const auto &t : v) {
+        QJsonObject o;
+        const auto m = t.toMap();
+        for (auto it = m.begin(); it != m.end(); ++it)
+            o.insert(it.key(), QJsonValue::fromVariant(it.value()));
+        arr.append(o);
+    }
+    cfg.insert("savedTabs", arr);
+    Config::save(cfg);
+    emit changed();
+}
 
 QString Settings::currentIconTheme() const { return QIcon::themeName(); }
 QString Settings::detectedTerminal() const { return Config::detectTerminal(); }
