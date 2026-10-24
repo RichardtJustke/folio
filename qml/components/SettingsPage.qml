@@ -546,10 +546,12 @@ Rectangle {
             Line {
                 page: "window"
                 label: "Barra lateral"
-                hint: "Automático: some e encolhe conforme a largura (Ctrl+B alterna)"
+                hint: Settings.sidebarMode === "autohide" ? "Some sozinha: encoste o cursor na borda esquerda (ou arraste um arquivo até ela) para mostrar; Ctrl+B também"
+                    : "Pela largura: cheia, só ícones ou oculta conforme o tamanho da janela (Ctrl+B alterna)"
+                keywords: "automática esconder some sozinha borda auto ocultar"
                 Segmented {
-                    options: [{ value: "auto", label: "Auto" }, { value: "full", label: "Cheia" },
-                              { value: "compact", label: "Ícones" }, { value: "hidden", label: "Oculta" }]
+                    options: [{ value: "auto", label: "Pela largura" }, { value: "autohide", label: "Some sozinha" },
+                              { value: "full", label: "Cheia" }, { value: "compact", label: "Ícones" }, { value: "hidden", label: "Oculta" }]
                     current: Settings.sidebarMode
                     onPicked: v => Settings.sidebarMode = v
                 }

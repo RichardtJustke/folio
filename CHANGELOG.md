@@ -2,6 +2,10 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.25
+- Barra lateral **Some sozinha** (Configurações → Janela e barra lateral): fica oculta e os arquivos usam a janela toda. Encostar o cursor na borda esquerda faz ela aparecer flutuando por cima, com sombra; ela some quando o cursor se afasta, ao escolher um lugar ou com Esc. Arrastar um arquivo até a borda também abre a barra, para soltar numa pasta. Ctrl+B mostra/esconde.
+- O modo "Auto" passa a se chamar "Pela largura".
+
 ## Alpha 0.24
 - Arrastar vários itens mostra os ícones empilhados (até 3, cada um com o seu tipo) e a quantidade discreta no canto do ícone da frente. Com um item só, aparece só o ícone, como na grade.
 

@@ -55,16 +55,22 @@ Window {
 
     // ── layout responsivo ──
     // auto: barra lateral cheia (≥860), só ícones (≥560) ou oculta
+    // autohide: oculta, aparece por cima ao encostar o cursor na borda esquerda
     readonly property string sidebarState: {
         const m = Settings.sidebarMode
+        if (m === "autohide") return "overlay"
         if (m !== "auto") return m
         return width >= 860 ? "full" : width >= 560 ? "compact" : "hidden"
     }
+    property bool sidebarRevealed: false
+    readonly property bool sidebarOverlay: sidebarState === "overlay"
+    onSidebarOverlayChanged: sidebarRevealed = false
     property bool settingsOpen: false
     // painel de prévia (F3): some sozinho em janelas estreitas
     readonly property bool previewShown: Settings.previewPanel && width >= 760 && !settingsOpen
 
     function toggleSidebar() {
+        if (sidebarOverlay) { sidebarRevealed = !sidebarRevealed; return }
         Settings.sidebarMode = sidebarState === "hidden" ? "full" : "hidden"
     }
 
@@ -265,14 +271,80 @@ Window {
         border.width: win.maximized ? 0 : 1
         border.color: Theme.border
 
-        Sidebar {
-            id: sidebar
+        Item { // espaço que a barra lateral ocupa no layout (zero quando ela flutua ou está oculta)
+            id: dock
             anchors { left: parent.left; top: parent.top; bottom: parent.bottom; margins: 8 }
             width: win.sidebarState === "full" ? Theme.sidebarWidth
                  : win.sidebarState === "compact" ? Theme.sidebarCompactWidth : 0
-            visible: width > 0.5
-            clip: true
             Behavior on width { NumberAnimation { duration: Theme.dur(260); easing.type: Easing.OutCubic } }
+        }
+
+        // ── barra lateral automática: a borda esquerda a revela, sair dela a esconde ──
+        HoverHandler { id: frameHover }
+        Timer {
+            id: revealTimer
+            interval: 120
+            onTriggered: win.sidebarRevealed = true
+        }
+        Timer {
+            id: concealTimer
+            interval: 380
+            onTriggered: win.sidebarRevealed = false
+        }
+        // cursor bem à direita da barra (ou fora da janela): esconde. Durante um arraste não há hover, então ela fica
+        readonly property bool pointerAway: !frameHover.hovered
+            || frameHover.point.position.x > sidebar.x + sidebar.width + 24
+        onPointerAwayChanged: {
+            if (win.sidebarRevealed && pointerAway) concealTimer.restart()
+            else concealTimer.stop()
+        }
+        Item {
+            id: edgeZone
+            visible: win.sidebarOverlay && !win.sidebarRevealed
+            anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+            width: 6
+            z: 40
+            HoverHandler {
+                onHoveredChanged: hovered ? revealTimer.restart() : revealTimer.stop()
+            }
+            DropArea { // arrastar um arquivo até a borda também abre (para soltar numa pasta)
+                anchors.fill: parent
+                onEntered: win.sidebarRevealed = true
+            }
+            Rectangle { // dica na borda
+                anchors { left: parent.left; verticalCenter: parent.verticalCenter }
+                width: 3; height: parent.height * 0.3; radius: 2
+                color: Theme.accent
+                opacity: revealTimer.running ? 0.8 : 0
+                Behavior on opacity { NumberAnimation { duration: Theme.dur(120) } }
+            }
+        }
+
+        Rectangle { // sombra e fundo sólido da barra flutuante (a barra em si é translúcida)
+            visible: win.sidebarOverlay && sidebar.x > -sidebar.width
+            x: sidebar.x; y: sidebar.y
+            width: sidebar.width; height: sidebar.height
+            z: 29
+            radius: sidebar.radius
+            color: Theme.tint(Theme.menuBg, 0.96)
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: -6
+                z: -1
+                radius: parent.radius + 6
+                color: Qt.rgba(0, 0, 0, Theme.light ? 0.10 : 0.30)
+            }
+        }
+
+        Sidebar {
+            id: sidebar
+            anchors { top: parent.top; bottom: parent.bottom; margins: 8 }
+            x: !win.sidebarOverlay ? 8 : win.sidebarRevealed ? 8 : -width - 16
+            z: win.sidebarOverlay ? 30 : 0
+            Behavior on x { NumberAnimation { duration: Theme.dur(220); easing.type: Easing.OutCubic } }
+            width: win.sidebarOverlay ? Theme.sidebarWidth : dock.width
+            visible: width > 0.5 && x > -width
+            clip: true
             compact: win.sidebarState === "compact"
             onOpenSettings: win.settingsOpen = !win.settingsOpen
             onTopClicked: win.topClick()
@@ -294,6 +366,7 @@ Window {
             }
             onNavigate: path => {
                 win.settingsOpen = false
+                if (win.sidebarOverlay) win.sidebarRevealed = false
                 if (path !== "folio:network") { win.nav.go(path); return }
                 if (fileOps.hasNetworkMounts()) win.nav.go(fileOps.networkDir())
                 else connectDialog.show()
@@ -303,13 +376,14 @@ Window {
                 fileOps.dropUrls(d.urls, path)
                 sidebar.pulse(path)
                 d.accept(Qt.CopyAction)
+                if (win.sidebarOverlay) concealTimer.restart()
             }
         }
 
         Loader {
             id: header
             readonly property var search: item ? item.search : null
-            anchors { left: sidebar.right; right: parent.right; top: parent.top; topMargin: 4; leftMargin: sidebar.visible ? 0 : -4 }
+            anchors { left: dock.right; right: parent.right; top: parent.top; topMargin: 4; leftMargin: dock.width > 0 ? 0 : -4 }
             height: Theme.headerHeight
             active: win.fm !== null
             sourceComponent: HeaderBar {
@@ -317,7 +391,7 @@ Window {
                 fileModel: win.fm
                 navigator: win.nav
                 ops: fileOps
-                sidebarHidden: win.sidebarState === "hidden"
+                sidebarHidden: win.sidebarState === "hidden" || win.sidebarOverlay
                 onToggleSidebar: win.toggleSidebar()
                 onTopClicked: win.topClick()
                 onOpenPath: typed => win.openPath(typed)
@@ -329,7 +403,7 @@ Window {
 
         TabStrip {
             id: tabStrip
-            anchors { left: sidebar.right; right: parent.right; top: header.bottom }
+            anchors { left: dock.right; right: parent.right; top: header.bottom }
             height: 34
             tabs: tabs
             currentIndex: win.currentTab
@@ -365,7 +439,7 @@ Window {
 
         Rectangle { // fundo de leitura da área de arquivos
             visible: !win.settingsOpen
-            anchors { left: sidebar.right; right: previewPanel.visible ? previewPanel.left : parent.right; top: tabStrip.bottom; bottom: parent.bottom; leftMargin: 4; margins: 4 }
+            anchors { left: dock.right; right: previewPanel.visible ? previewPanel.left : parent.right; top: tabStrip.bottom; bottom: parent.bottom; leftMargin: 4; margins: 4 }
             radius: Theme.radius - 4
             color: Theme.contentBacking
         }
@@ -414,7 +488,7 @@ Window {
             visible: opacity > 0
             Behavior on opacity { NumberAnimation { duration: Theme.dur(200) } }
             anchors {
-                left: sidebar.right; right: previewPanel.visible ? previewPanel.left : parent.right; top: tabStrip.bottom; bottom: parent.bottom
+                left: dock.right; right: previewPanel.visible ? previewPanel.left : parent.right; top: tabStrip.bottom; bottom: parent.bottom
                 leftMargin: 4; rightMargin: previewPanel.visible ? 4 : win.split ? 6 : 0; bottomMargin: win.split ? 6 : 0
             }
             readonly property bool vertical: width < 640 // janela estreita: painéis um sobre o outro
@@ -514,7 +588,7 @@ Window {
             visible: opacity > 0
             Behavior on opacity { NumberAnimation { duration: Theme.dur(240); easing.type: Easing.OutCubic } }
             transform: Translate { y: (1 - settingsPage.opacity) * 10 }
-            anchors { left: sidebar.right; right: parent.right; top: tabStrip.bottom; bottom: parent.bottom; margins: 6; leftMargin: 4; topMargin: 2 }
+            anchors { left: dock.right; right: parent.right; top: tabStrip.bottom; bottom: parent.bottom; margins: 6; leftMargin: 4; topMargin: 2 }
             onClosed: win.settingsOpen = false
         }
     }
@@ -566,6 +640,7 @@ Window {
     }
     Shortcut { sequence: "Space"; enabled: win.ready; onActivated: quickLook.shown ? quickLook.shown = false : win.openQuickLook() }
     Shortcut { sequence: "Escape"; enabled: quickLook.shown; onActivated: quickLook.shown = false }
+    Shortcut { sequence: "Escape"; enabled: win.sidebarRevealed && !quickLook.shown; onActivated: win.sidebarRevealed = false }
     Shortcut { sequences: ["Alt+Left", "Backspace"]; enabled: win.ready; onActivated: nav.back() }
     Shortcut { sequence: "Alt+Right"; enabled: win.ready; onActivated: nav.forward() }
     Shortcut { sequence: "Alt+Up"; enabled: win.ready; onActivated: nav.up() }

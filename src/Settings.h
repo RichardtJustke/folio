@@ -18,7 +18,7 @@ class Settings : public QObject
     Q_PROPERTY(int iconSize READ iconSize WRITE setIconSize NOTIFY changed)
     Q_PROPERTY(int fontSize READ fontSize WRITE setFontSize NOTIFY changed)
     Q_PROPERTY(QString windowControls READ windowControls WRITE setWindowControls NOTIFY changed) // right | left | hidden
-    Q_PROPERTY(QString sidebarMode READ sidebarMode WRITE setSidebarMode NOTIFY changed)    // auto | full | compact | hidden
+    Q_PROPERTY(QString sidebarMode READ sidebarMode WRITE setSidebarMode NOTIFY changed)    // auto | autohide | full | compact | hidden
     Q_PROPERTY(bool singleClick READ singleClick WRITE setSingleClick NOTIFY changed)
     Q_PROPERTY(bool confirmTrash READ confirmTrash WRITE setConfirmTrash NOTIFY changed)
     Q_PROPERTY(bool showPreviewsInList READ showPreviewsInList WRITE setShowPreviewsInList NOTIFY changed)
