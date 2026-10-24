@@ -103,6 +103,12 @@ QtObject {
             + "&accent=" + Settings.accent.slice(1) + "&light=" + (light ? 1 : 0) + (tileOnly ? "&tile=1" : "")
     }
 
+    // primeira tecla configurada para uma ação (Configurações → Gestos e atalhos), ou a padrão
+    function keyFor(id, fallback) {
+        const k = Settings.shortcuts[id]
+        return k === undefined ? fallback : k.length ? k[0] : ""
+    }
+
     function icon(names, tint) {
         return "image://icon/" + names + "?rev=" + Settings.iconRevision + (tint ? "&color=" + tint.toString().slice(1) : "")
     }

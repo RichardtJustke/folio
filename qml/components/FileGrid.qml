@@ -448,7 +448,7 @@ Item {
         }
         GlassMenuItem {
             text: "Renomear…"
-            shortcut: "F2"
+            shortcut: Theme.keyFor("rename", "F2")
             visible: !root.fileModel.isTrash
             onTriggered: root.selection.length === 1 ? root.fileModel.renamingPath = root.selection[0]
                                                       : root.renameMany(root.selection)
@@ -559,7 +559,7 @@ Item {
         GlassMenuItem { text: "Inverter Seleção"; onTriggered: root.fileModel.invertSelection() }
         GlassMenuItem { text: "Selecionar por Padrão…"; onTriggered: root.promptSelectPattern() }
         Separator {}
-        GlassMenuItem { text: "Abrir Terminal Aqui"; shortcut: "F4"; onTriggered: root.ops.openTerminal(root.fileModel.path) }
+        GlassMenuItem { text: "Abrir Terminal Aqui"; shortcut: Theme.keyFor("terminal", "F4"); onTriggered: root.ops.openTerminal(root.fileModel.path) }
         GlassMenuItem { text: "Copiar Caminho da Pasta"; onTriggered: root.ops.copyText(root.fileModel.path) }
         GlassMenuItem { text: "Propriedades"; onTriggered: root.showProperties([root.fileModel.path]) }
     }

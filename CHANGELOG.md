@@ -2,6 +2,11 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.27
+- Paleta de comandos (Ctrl+Shift+P): procura qualquer ação pelo nome (sem precisar de acentos) e mostra o atalho ao lado. Também traz configurações: abrir cada aba das Configurações, trocar o tema, o modo da barra lateral, o estilo dos ícones, ligar/desligar animações, gestos e abrir com um clique. Os comandos usados por último aparecem primeiro; os que não valem no momento (ex.: Colar na Lixeira) ficam esmaecidos.
+- Novos comandos sem atalho: "Ir para o Início", "Ir para Recentes", "Ir para a Lixeira".
+- Por dentro: todos os atalhos de teclado vêm de uma lista única de ações (base para reatribuir teclas).
+
 ## Alpha 0.26
 - Hashes nas Propriedades (Alt+Enter) de um arquivo: MD5, SHA-1 e SHA-256, calculados numa só leitura em segundo plano (arquivos de até 200 MB na hora; maiores pelo botão "Calcular", com progresso). Cada um tem botão de copiar.
 - "Cole um hash para comparar": diz se confere e com qual dos três.

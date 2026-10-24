@@ -40,6 +40,8 @@ class Settings : public QObject
     Q_PROPERTY(QString qtVersion READ qtVersion CONSTANT)
     Q_PROPERTY(QVariantMap windowGeometry READ windowGeometry WRITE setWindowGeometry NOTIFY changed)
     Q_PROPERTY(QVariantList savedTabs READ savedTabs WRITE setSavedTabs NOTIFY changed)
+    // atalhos trocados pelo usuário: { idDaAção: ["Ctrl+K", …] } (lista vazia = sem atalho)
+    Q_PROPERTY(QVariantMap shortcuts READ shortcuts NOTIFY changed)
 
 public:
     explicit Settings(QObject *parent = nullptr);
@@ -74,6 +76,10 @@ public:
     QVariantMap windowGeometry() const { return m_windowGeometry; }
     void setWindowGeometry(const QVariantMap &v);
     QVariantList savedTabs() const { return m_savedTabs; }
+    QVariantMap shortcuts() const { return m_shortcuts; }
+    Q_INVOKABLE void setShortcut(const QString &action, const QStringList &keys);
+    Q_INVOKABLE void resetShortcut(const QString &action);
+    Q_INVOKABLE void resetAllShortcuts();
     void setSavedTabs(const QVariantList &v);
 
     void setTheme(const QString &v);
@@ -139,4 +145,6 @@ private:
     qreal m_animSpeed = 1.0;
     QVariantMap m_windowGeometry;
     QVariantList m_savedTabs;
+    QVariantMap m_shortcuts;
+    void saveShortcuts();
 };

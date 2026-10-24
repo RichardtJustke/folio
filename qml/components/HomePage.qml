@@ -336,7 +336,7 @@ Item {
         GlassMenuItem { text: "Abrir"; onTriggered: root.navigate(folderMenu.item.path) }
         GlassMenuItem {
             text: folderMenu.item.frequent ? "Fixar no Acesso rápido" : "Desafixar"
-            enabled: folderMenu.item.frequent || folderMenu.item.removable
+            enabled: !!(folderMenu.item.frequent || folderMenu.item.removable)
             onTriggered: folderMenu.item.frequent ? root.places.addFavorite(folderMenu.item.path)
                                                   : root.places.removeFavorite(folderMenu.item.path)
         }

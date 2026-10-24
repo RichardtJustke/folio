@@ -216,7 +216,7 @@ Item {
                     onTriggered: root.fileModel.showHidden = !root.fileModel.showHidden
                 }
                 GlassMenuItem { text: "Nova Pasta"; visible: !root.fileModel.isTrash; onTriggered: root.newFolder() }
-                GlassMenuItem { text: "Painel de Prévia"; shortcut: "F3"; tick: Settings.previewPanel; onTriggered: Settings.previewPanel = !Settings.previewPanel }
+                GlassMenuItem { text: "Painel de Prévia"; shortcut: Theme.keyFor("preview", "F3"); tick: Settings.previewPanel; onTriggered: Settings.previewPanel = !Settings.previewPanel }
             }
         }
 

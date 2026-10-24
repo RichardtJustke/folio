@@ -17,7 +17,7 @@
 #include <QtGlobal>
 
 #ifndef FOLIO_VERSION
-#define FOLIO_VERSION "0.26"
+#define FOLIO_VERSION "0.27"
 #endif
 
 Settings::Settings(QObject *parent) : QObject(parent)
@@ -64,8 +64,40 @@ Settings::Settings(QObject *parent) : QObject(parent)
         }
         m_savedTabs = tabs;
     }
+    m_shortcuts = c.value("shortcuts").toObject().toVariantMap();
     if (!m_fontFamily.isEmpty())
         QGuiApplication::setFont(QFont(m_fontFamily));
+}
+
+void Settings::saveShortcuts()
+{
+    auto cfg = Config::load();
+    if (m_shortcuts.isEmpty())
+        cfg.remove("shortcuts");
+    else
+        cfg.insert("shortcuts", QJsonObject::fromVariantMap(m_shortcuts));
+    Config::save(cfg);
+    emit changed();
+}
+
+void Settings::setShortcut(const QString &action, const QStringList &keys)
+{
+    m_shortcuts.insert(action, keys);
+    saveShortcuts();
+}
+
+void Settings::resetShortcut(const QString &action)
+{
+    if (m_shortcuts.remove(action))
+        saveShortcuts();
+}
+
+void Settings::resetAllShortcuts()
+{
+    if (m_shortcuts.isEmpty())
+        return;
+    m_shortcuts.clear();
+    saveShortcuts();
 }
 
 template<typename T>

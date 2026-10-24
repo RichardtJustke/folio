@@ -615,6 +615,32 @@ Window {
         onReveal: path => { win.settingsOpen = false; win.tab.reveal(path) }
         onClosed: win.focusView()
     }
+    CommandPalette {
+        id: palette
+        actions: win.actions
+        keysFor: a => win.keysFor(a)
+        // configurações também viram comandos
+        extra: {
+            const out = []
+            for (const p of settingsPage.pages)
+                out.push({ id: "settings:" + p.id, label: "Configurações: " + p.label, group: "Configurações",
+                           run: () => { settingsPage.openPage(p.id); win.settingsOpen = true } })
+            for (const t of [["dark", "Escuro"], ["light", "Claro"], ["auto", "Automático"]])
+                out.push({ id: "theme:" + t[0], label: "Tema: " + t[1], group: "Aparência", run: () => Settings.theme = t[0] })
+            for (const m of [["auto", "Pela largura"], ["autohide", "Some sozinha"], ["full", "Cheia"], ["compact", "Ícones"], ["hidden", "Oculta"]])
+                out.push({ id: "sidebarMode:" + m[0], label: "Barra lateral: " + m[1], group: "Aparência", run: () => Settings.sidebarMode = m[0] })
+            for (const i of [["duotone", "Duotone"], ["mac", "macOS"], ["outline", "Contorno"], ["flat", "Plano"], ["system", "Sistema"]])
+                out.push({ id: "icons:" + i[0], label: "Ícones dos arquivos: " + i[1], group: "Aparência", run: () => Settings.fileIcons = i[0] })
+            out.push({ id: "toggle:singleClick", label: (Settings.singleClick ? "Desligar" : "Ligar") + " abrir com um clique", group: "Comportamento",
+                       run: () => Settings.singleClick = !Settings.singleClick })
+            out.push({ id: "toggle:reduceMotion", label: (Settings.reduceMotion ? "Ligar" : "Desligar") + " animações", group: "Animações",
+                       run: () => Settings.reduceMotion = !Settings.reduceMotion })
+            out.push({ id: "toggle:swipe", label: (Settings.swipeNavigation ? "Desligar" : "Ligar") + " gestos do touchpad", group: "Gestos",
+                       run: () => Settings.swipeNavigation = !Settings.swipeNavigation })
+            return out
+        }
+        onClosed: win.focusView()
+    }
     ConnectDialog { id: connectDialog; ops: fileOps }
     PropertiesDialog { id: propertiesDialog; ops: fileOps }
     OpenWithDialog { id: openWithDialog; ops: fileOps }
@@ -626,67 +652,90 @@ Window {
     readonly property bool ready: fm !== null && !typing
     readonly property bool writable: ready && !fm.isTrash && !fm.path.startsWith("folio:") // pasta de verdade (colar, criar)
 
-    Shortcut { sequences: [StandardKey.Copy]; enabled: win.ready; onActivated: fileOps.copy(fm.selectedPaths()) }
-    Shortcut { sequences: [StandardKey.Cut]; enabled: win.ready && !fm.isTrash; onActivated: fileOps.cut(fm.selectedPaths()) }
-    Shortcut { sequences: [StandardKey.Paste]; enabled: win.writable; onActivated: fileOps.paste(fm.path) }
-    Shortcut { sequences: ["Shift+F10", "Menu"]; enabled: win.ready && fm.selectedCount > 0; onActivated: tab.view.openItemMenu() }
-    Shortcut { sequences: [StandardKey.Undo]; enabled: win.ready; onActivated: fileOps.undo() }
-    Shortcut { sequence: "Delete"; enabled: win.ready; onActivated: win.requestDelete(fm.selectedPaths(), false) }
-    Shortcut { sequence: "Shift+Delete"; enabled: win.ready; onActivated: win.requestDelete(fm.selectedPaths(), true) }
-    Shortcut {
-        sequence: "F2" // um item: renomeia no lugar; vários: renomear em lote
-        enabled: win.ready && fm.selectedCount >= 1 && !fm.isTrash
-        onActivated: fm.selectedCount === 1 ? fm.renamingPath = fm.selectedPaths()[0] : batchRename.show(fm.selectedPaths())
+    // ── ações: alimentam os atalhos de teclado, a paleta de comandos (Ctrl+Shift+P) e Configurações → Atalhos ──
+    // { id, label, group, keys (padrão), when() (disponível agora?), run() }
+    readonly property var actions: [
+        // Arquivos
+        { id: "copy", label: "Copiar", group: "Arquivos", keys: ["Ctrl+C"], when: () => ready, run: () => fileOps.copy(fm.selectedPaths()) },
+        { id: "cut", label: "Recortar", group: "Arquivos", keys: ["Ctrl+X"], when: () => ready && !fm.isTrash, run: () => fileOps.cut(fm.selectedPaths()) },
+        { id: "paste", label: "Colar", group: "Arquivos", keys: ["Ctrl+V"], when: () => writable, run: () => fileOps.paste(fm.path) },
+        { id: "undo", label: "Desfazer", group: "Arquivos", keys: ["Ctrl+Z"], when: () => ready, run: () => fileOps.undo() },
+        { id: "trash", label: "Mover para a Lixeira", group: "Arquivos", keys: ["Delete"], when: () => ready, run: () => requestDelete(fm.selectedPaths(), false) },
+        { id: "delete", label: "Excluir permanentemente", group: "Arquivos", keys: ["Shift+Delete"], when: () => ready, run: () => requestDelete(fm.selectedPaths(), true) },
+        { id: "rename", label: "Renomear", group: "Arquivos", keys: ["F2"], when: () => ready && fm.selectedCount >= 1 && !fm.isTrash,
+          run: () => fm.selectedCount === 1 ? fm.renamingPath = fm.selectedPaths()[0] : batchRename.show(fm.selectedPaths()) },
+        { id: "newFolder", label: "Nova pasta", group: "Arquivos", keys: ["Ctrl+Shift+N"], when: () => writable, run: () => tab.newFolder() },
+        { id: "newFile", label: "Novo arquivo", group: "Arquivos", keys: ["Ctrl+Alt+N"], when: () => writable, run: () => tab.newFile() },
+        { id: "properties", label: "Propriedades", group: "Arquivos", keys: ["Alt+Return", "Ctrl+I"], when: () => ready,
+          run: () => showProperties(fm.selectedPaths().length ? fm.selectedPaths() : [fm.path]) },
+        { id: "copyPath", label: "Copiar caminho", group: "Arquivos", keys: ["Ctrl+Shift+C"], when: () => ready,
+          run: () => fileOps.copyText(fm.selectedPaths().length ? fm.selectedPaths().join("\n") : fm.path) },
+        { id: "itemMenu", label: "Menu de contexto dos itens", group: "Arquivos", keys: ["Shift+F10", "Menu"], when: () => ready && fm.selectedCount > 0, run: () => tab.view.openItemMenu() },
+        { id: "quickLook", label: "Visualização Rápida", group: "Arquivos", keys: ["Space"], when: () => ready,
+          run: () => quickLook.shown ? quickLook.shown = false : openQuickLook() },
+        { id: "terminal", label: "Abrir terminal aqui", group: "Arquivos", keys: ["F4"], when: () => fm !== null && !fm.isTrash,
+          run: () => { const sel = fm.selectedPaths(); fileOps.openTerminal(fm.isSearch && sel.length > 0 ? fileOps.parentDir(sel[0]) : fm.path) } },
+        { id: "addFavorite", label: "Adicionar pasta aos Favoritos", group: "Arquivos", keys: ["Ctrl+D"], when: () => writable, run: () => placesModel.addFavorite(fm.path) },
+        // Seleção
+        { id: "selectAll", label: "Selecionar tudo", group: "Seleção", keys: ["Ctrl+A"], when: () => ready, run: () => fm.selectAll() },
+        { id: "invertSelection", label: "Inverter seleção", group: "Seleção", keys: ["Ctrl+Shift+I"], when: () => ready, run: () => fm.invertSelection() },
+        { id: "selectPattern", label: "Selecionar por padrão…", group: "Seleção", keys: ["Ctrl+S"], when: () => ready, run: () => promptSelectPattern() },
+        // Navegação
+        { id: "back", label: "Voltar", group: "Navegação", keys: ["Alt+Left", "Backspace"], when: () => ready, run: () => nav.back() },
+        { id: "forward", label: "Avançar", group: "Navegação", keys: ["Alt+Right"], when: () => ready, run: () => nav.forward() },
+        { id: "up", label: "Pasta acima", group: "Navegação", keys: ["Alt+Up"], when: () => ready, run: () => nav.up() },
+        { id: "homeDir", label: "Ir para a pasta pessoal", group: "Navegação", keys: ["Alt+Home"], when: () => ready, run: () => nav.go("~") },
+        { id: "homePage", label: "Ir para o Início", group: "Navegação", keys: [], when: () => ready, run: () => nav.go("folio:home") },
+        { id: "recent", label: "Ir para Recentes", group: "Navegação", keys: [], when: () => ready, run: () => nav.go("folio:recent") },
+        { id: "trashDir", label: "Ir para a Lixeira", group: "Navegação", keys: [], when: () => ready, run: () => nav.go(fileOps.trashDir) },
+        { id: "reload", label: "Recarregar", group: "Navegação", keys: ["F5", "Ctrl+R"], when: () => ready, run: () => fm.reload() },
+        { id: "editPath", label: "Digitar caminho", group: "Navegação", keys: ["Ctrl+L"], when: () => fm !== null, run: () => { if (header.item) header.item.pathBar.edit() } },
+        { id: "search", label: "Buscar na pasta", group: "Navegação", keys: ["Ctrl+F"], when: () => fm !== null, run: () => { if (header.search) header.search.focusField() } },
+        { id: "quickOpen", label: "Busca rápida de arquivos", group: "Navegação", keys: ["Ctrl+P"], when: () => tab !== null, run: () => quickOpen.show() },
+        { id: "palette", label: "Paleta de comandos", group: "Navegação", keys: ["Ctrl+Shift+P"], when: () => true, run: () => palette.show() },
+        // Vista
+        { id: "viewGrid", label: "Vista em ícones", group: "Vista", keys: ["Ctrl+1"], when: () => ready, run: () => fm.viewMode = "grid" },
+        { id: "viewList", label: "Vista em lista", group: "Vista", keys: ["Ctrl+2"], when: () => ready, run: () => fm.viewMode = "list" },
+        { id: "viewColumns", label: "Vista em colunas", group: "Vista", keys: ["Ctrl+3"], when: () => ready, run: () => fm.viewMode = "column" },
+        { id: "hidden", label: "Mostrar/ocultar arquivos ocultos", group: "Vista", keys: ["Ctrl+H"], when: () => ready, run: () => fm.showHidden = !fm.showHidden },
+        { id: "extensions", label: "Mostrar/ocultar extensões", group: "Vista", keys: ["Ctrl+E"], when: () => ready, run: () => fm.showExtensions = !fm.showExtensions },
+        { id: "preview", label: "Painel de prévia", group: "Vista", keys: ["F3"], when: () => true, run: () => Settings.previewPanel = !Settings.previewPanel },
+        { id: "sidebar", label: "Mostrar/esconder barra lateral", group: "Vista", keys: ["Ctrl+B", "F9"], when: () => true, run: () => toggleSidebar() },
+        { id: "zoomIn", label: "Aumentar ícones", group: "Vista", keys: ["Ctrl+=", "Ctrl++"], when: () => true, run: () => zoom(8) },
+        { id: "zoomOut", label: "Diminuir ícones", group: "Vista", keys: ["Ctrl+-"], when: () => true, run: () => zoom(-8) },
+        { id: "zoomReset", label: "Tamanho padrão dos ícones", group: "Vista", keys: ["Ctrl+0"], when: () => true, run: () => Settings.iconSize = 76 },
+        { id: "fullscreen", label: "Tela cheia", group: "Vista", keys: ["F11"], when: () => true, run: () => toggleFullscreen() },
+        // Janela e abas
+        { id: "newTab", label: "Nova aba", group: "Janela e abas", keys: ["Ctrl+T"], when: () => true, run: () => newTab(fm ? fm.path : fileOps.startPath()) },
+        { id: "closeTab", label: "Fechar aba", group: "Janela e abas", keys: ["Ctrl+W"], when: () => true, run: () => tabStrip.requestClose(currentTab) },
+        { id: "nextTab", label: "Próxima aba", group: "Janela e abas", keys: ["Ctrl+Tab"], when: () => tabs.count > 1, run: () => selectTab((currentTab + 1) % tabs.count) },
+        { id: "prevTab", label: "Aba anterior", group: "Janela e abas", keys: ["Ctrl+Shift+Tab"], when: () => tabs.count > 1, run: () => selectTab((currentTab - 1 + tabs.count) % tabs.count) },
+        { id: "split", label: "Dividir janela", group: "Janela e abas", keys: ["Ctrl+\\", "F6"], when: () => true, run: () => toggleSplit() },
+        { id: "newWindow", label: "Nova janela", group: "Janela e abas", keys: ["Ctrl+N"], when: () => true, run: () => fileOps.openNewWindow(fm ? fm.path : fileOps.startPath()) },
+        { id: "settings", label: "Configurações", group: "Janela e abas", keys: ["Ctrl+,"], when: () => true, run: () => settingsOpen = !settingsOpen },
+        { id: "quit", label: "Sair", group: "Janela e abas", keys: ["Ctrl+Q"], when: () => true, run: () => win.close() }
+    ]
+    // teclas em uso: as trocadas nas Configurações ou as padrão
+    function keysFor(action) {
+        const custom = Settings.shortcuts[action.id]
+        return custom !== undefined ? custom : action.keys
     }
-    Shortcut { sequence: "Space"; enabled: win.ready; onActivated: quickLook.shown ? quickLook.shown = false : win.openQuickLook() }
+    function runAction(id) {
+        const a = actions.find(x => x.id === id)
+        if (a && a.when()) a.run()
+    }
+
     Shortcut { sequence: "Escape"; enabled: quickLook.shown; onActivated: quickLook.shown = false }
     Shortcut { sequence: "Escape"; enabled: win.sidebarRevealed && !quickLook.shown; onActivated: win.sidebarRevealed = false }
-    Shortcut { sequences: ["Alt+Left", "Backspace"]; enabled: win.ready; onActivated: nav.back() }
-    Shortcut { sequence: "Alt+Right"; enabled: win.ready; onActivated: nav.forward() }
-    Shortcut { sequence: "Alt+Up"; enabled: win.ready; onActivated: nav.up() }
-    Shortcut { sequence: "Alt+Home"; enabled: win.ready; onActivated: nav.go("~") }
-    Shortcut { sequence: "Ctrl+H"; enabled: win.ready; onActivated: fm.showHidden = !fm.showHidden }
-    Shortcut { sequence: "Ctrl+E"; enabled: win.ready; onActivated: fm.showExtensions = !fm.showExtensions }
-    Shortcut { sequences: [StandardKey.SelectAll]; enabled: win.ready; onActivated: fm.selectAll() }
-    Shortcut { sequence: "Ctrl+Shift+N"; enabled: win.writable; onActivated: tab.newFolder() }
-    Shortcut { sequences: ["F5", "Ctrl+R"]; enabled: win.ready; onActivated: fm.reload() }
-    Shortcut { sequences: [StandardKey.Find]; enabled: fm !== null; onActivated: if (header.search) header.search.focusField() }
-    Shortcut { sequences: ["Ctrl+L"]; enabled: fm !== null; onActivated: if (header.item) header.item.pathBar.edit() }
-    Shortcut { sequences: ["Ctrl+B", "F9"]; onActivated: win.toggleSidebar() }
-    Shortcut { sequences: ["F11"]; onActivated: win.toggleFullscreen() }
-    Shortcut { sequence: "Ctrl+,"; onActivated: win.settingsOpen = !win.settingsOpen }
     Shortcut { sequence: "Escape"; enabled: win.settingsOpen && settingsPage.query === ""; onActivated: win.settingsOpen = false }
-    Shortcut { sequences: ["Alt+Return", "Ctrl+I"]; enabled: win.ready; onActivated: win.showProperties(fm.selectedPaths().length ? fm.selectedPaths() : [fm.path]) }
-    Shortcut { sequence: "Ctrl+Shift+I"; enabled: win.ready; onActivated: fm.invertSelection() }
-    Shortcut { sequence: "Ctrl+S"; enabled: win.ready; onActivated: win.promptSelectPattern() }
-    Shortcut { sequence: "Ctrl+D"; enabled: win.writable; onActivated: placesModel.addFavorite(fm.path) }
-    Shortcut { sequence: "Ctrl+N"; onActivated: fileOps.openNewWindow(fm ? fm.path : fileOps.startPath()) }
-    Shortcut { sequence: "Ctrl+Shift+C"; enabled: win.ready; onActivated: fileOps.copyText(fm.selectedPaths().length ? fm.selectedPaths().join("\n") : fm.path) }
-    Shortcut { sequences: ["Ctrl+=", "Ctrl++"]; onActivated: win.zoom(8) }
-    Shortcut { sequence: "Ctrl+-"; onActivated: win.zoom(-8) }
-    Shortcut { sequence: "Ctrl+0"; onActivated: Settings.iconSize = 76 }
-    Shortcut { sequence: "Ctrl+Alt+N"; enabled: win.writable; onActivated: tab.newFile() }
-    Shortcut { sequence: "Ctrl+1"; enabled: win.ready; onActivated: fm.viewMode = "grid" }
-    Shortcut { sequence: "Ctrl+2"; enabled: win.ready; onActivated: fm.viewMode = "list" }
-    Shortcut { sequence: "Ctrl+3"; enabled: win.ready; onActivated: fm.viewMode = "column" }
-    Shortcut { // terminal na pasta atual (na busca: na pasta do item selecionado)
-        sequence: "F4"
-        enabled: fm !== null && !fm.isTrash
-        onActivated: {
-            const sel = fm.selectedPaths()
-            fileOps.openTerminal(fm.isSearch && sel.length > 0 ? fileOps.parentDir(sel[0]) : fm.path)
+
+    Instantiator {
+        model: win.actions
+        delegate: Shortcut {
+            required property var modelData
+            sequences: win.keysFor(modelData)
+            enabled: sequences.length > 0 && modelData.when()
+            onActivated: modelData.run()
         }
     }
-    Shortcut { sequence: "Ctrl+P"; enabled: win.tab !== null; onActivated: quickOpen.show() }
-    Shortcut { sequence: "F3"; onActivated: Settings.previewPanel = !Settings.previewPanel }
-    Shortcut { sequence: "Ctrl+T"; onActivated: win.newTab(fm ? fm.path : fileOps.startPath()) }
-    Shortcut { sequence: "Ctrl+W"; onActivated: tabStrip.requestClose(win.currentTab) }
-    Shortcut { sequences: ["Ctrl+\\", "F6"]; onActivated: win.toggleSplit() }
-    Shortcut { sequence: "Ctrl+Tab"; enabled: tabs.count > 1; onActivated: win.selectTab((win.currentTab + 1) % tabs.count) }
-    Shortcut {
-        sequence: "Ctrl+Shift+Tab"
-        enabled: tabs.count > 1
-        onActivated: win.selectTab((win.currentTab - 1 + tabs.count) % tabs.count)
-    }
-    Shortcut { sequences: [StandardKey.Quit]; onActivated: win.close() }
 }
