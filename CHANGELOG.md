@@ -2,6 +2,10 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.26
+- Hashes nas Propriedades (Alt+Enter) de um arquivo: MD5, SHA-1 e SHA-256, calculados numa só leitura em segundo plano (arquivos de até 200 MB na hora; maiores pelo botão "Calcular", com progresso). Cada um tem botão de copiar.
+- "Cole um hash para comparar": diz se confere e com qual dos três.
+
 ## Alpha 0.25
 - Barra lateral **Some sozinha** (Configurações → Janela e barra lateral): fica oculta e os arquivos usam a janela toda. Encostar o cursor na borda esquerda faz ela aparecer flutuando por cima, com sombra; ela some quando o cursor se afasta, ao escolher um lugar ou com Esc. Arrastar um arquivo até a borda também abre a barra, para soltar numa pasta. Ctrl+B mostra/esconde.
 - O modo "Auto" passa a se chamar "Pela largura".

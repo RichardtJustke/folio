@@ -17,13 +17,22 @@ GlassPopup {
 
     width: Math.min(440, Overlay.overlay ? Overlay.overlay.width - 40 : 440)
 
+    readonly property bool hashable: single && !info.isDir && !(paths[0] || "").includes("::")
+
     function show(list) {
         paths = list
         info = list.length === 1 ? ops.properties(list[0]) : ({})
         totalBytes = -1
         ops.computeSize(list)
+        compareField.text = ""
+        hasher.clear()
+        // arquivos de até 200 MB: calcula sozinho; maiores esperam o botão
+        if (hashable && info.size <= 200 * 1000 * 1000) hasher.compute(list[0])
         open()
     }
+    onClosed: hasher.clear()
+
+    Hasher { id: hasher }
 
     function toggle(bit) {
         const next = root.perm ^ bit
@@ -135,6 +144,118 @@ GlassPopup {
             PermBox { bit: 04 }
             PermBox { bit: 02 }
             PermBox { bit: 01 }
+        }
+
+        // ── Hashes ──
+        Item { visible: root.hashable; width: parent.width; height: 6 }
+        Item {
+            visible: root.hashable
+            width: parent.width
+            height: 26
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Hashes"
+                color: Theme.textDim
+                font.pixelSize: 12
+            }
+            DialogButton {
+                visible: !hasher.running && hasher.sha256 === ""
+                anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                text: "Calcular"
+                onClicked: hasher.compute(root.paths[0])
+            }
+            Row {
+                visible: hasher.running
+                anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                spacing: 8
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 110; height: 4; radius: 2
+                    color: Theme.pillBg
+                    Rectangle { width: parent.width * hasher.progress; height: parent.height; radius: 2; color: Theme.accent }
+                }
+                Text { text: Math.round(hasher.progress * 100) + "%"; color: Theme.textFaint; font.pixelSize: 11 }
+            }
+        }
+        Text {
+            visible: root.hashable && hasher.error !== ""
+            text: hasher.error
+            color: Theme.danger
+            font.pixelSize: 12
+        }
+        Repeater {
+            model: root.hashable && hasher.sha256 !== "" ? [
+                { label: "MD5", value: hasher.md5 },
+                { label: "SHA-1", value: hasher.sha1 },
+                { label: "SHA-256", value: hasher.sha256 }
+            ] : []
+            delegate: Item {
+                id: hashRow
+                required property var modelData
+                readonly property bool hit: compareField.text.trim() !== "" && hasher.match(compareField.text) === modelData.label
+                width: parent.width
+                height: 24
+                Text { anchors.verticalCenter: parent.verticalCenter; width: 70; text: hashRow.modelData.label; color: hashRow.hit ? Theme.accent : Theme.textDim; font.pixelSize: 11; font.weight: Font.DemiBold }
+                Text {
+                    anchors { left: parent.left; leftMargin: 74; right: copyBtn.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
+                    text: hashRow.modelData.value
+                    color: Theme.text
+                    font.pixelSize: 11
+                    font.family: "monospace"
+                    elide: Text.ElideMiddle
+                }
+                Rectangle {
+                    id: copyBtn
+                    anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                    width: 24; height: 24; radius: 12
+                    color: copyArea.containsMouse ? Theme.hover : "transparent"
+                    Image {
+                        anchors.centerIn: parent
+                        width: 13; height: 13
+                        sourceSize: Qt.size(26, 26)
+                        source: Theme.icon("edit-copy-symbolic", Theme.textDim)
+                    }
+                    MouseArea {
+                        id: copyArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        ToolTip.visible: containsMouse
+                        ToolTip.text: "Copiar " + hashRow.modelData.label
+                        ToolTip.delay: 400
+                        onClicked: root.ops.copyText(hashRow.modelData.value)
+                    }
+                }
+            }
+        }
+        TextField { // colar um hash para conferir
+            id: compareField
+            visible: root.hashable && hasher.sha256 !== ""
+            width: parent.width
+            placeholderText: "Cole um hash para comparar"
+            placeholderTextColor: Theme.textFaint
+            color: Theme.text
+            font.pixelSize: 11
+            font.family: "monospace"
+            selectionColor: Theme.accent
+            rightPadding: 110
+            background: Rectangle {
+                radius: 8
+                color: Theme.pillBg
+                border.width: 1
+                border.color: compareResult.visible ? (compareResult.ok ? "#30d158" : Theme.danger)
+                            : compareField.activeFocus ? Theme.accent : Theme.border
+            }
+            Text {
+                id: compareResult
+                readonly property string which: hasher.match(compareField.text)
+                readonly property bool ok: which !== ""
+                visible: compareField.text.trim() !== ""
+                anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                text: ok ? "✓ Confere (" + which + ")" : "✗ Não confere"
+                color: ok ? "#30d158" : Theme.danger
+                font.pixelSize: 11
+                font.weight: Font.DemiBold
+            }
         }
 
         Item { width: 1; height: 4 }
