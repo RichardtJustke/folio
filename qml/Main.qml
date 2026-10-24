@@ -584,6 +584,8 @@ Window {
         SettingsPage {
             id: settingsPage
             ops: fileOps
+            actions: win.actions
+            keysFor: a => win.keysFor(a)
             opacity: win.settingsOpen ? 1 : 0
             visible: opacity > 0
             Behavior on opacity { NumberAnimation { duration: Theme.dur(240); easing.type: Easing.OutCubic } }
@@ -727,14 +729,14 @@ Window {
 
     Shortcut { sequence: "Escape"; enabled: quickLook.shown; onActivated: quickLook.shown = false }
     Shortcut { sequence: "Escape"; enabled: win.sidebarRevealed && !quickLook.shown; onActivated: win.sidebarRevealed = false }
-    Shortcut { sequence: "Escape"; enabled: win.settingsOpen && settingsPage.query === ""; onActivated: win.settingsOpen = false }
+    Shortcut { sequence: "Escape"; enabled: win.settingsOpen && settingsPage.query === "" && settingsPage.recording === ""; onActivated: win.settingsOpen = false }
 
     Instantiator {
         model: win.actions
         delegate: Shortcut {
             required property var modelData
             sequences: win.keysFor(modelData)
-            enabled: sequences.length > 0 && modelData.when()
+            enabled: sequences.length > 0 && settingsPage.recording === "" && modelData.when()
             onActivated: modelData.run()
         }
     }

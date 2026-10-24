@@ -9,6 +9,7 @@
 #include <QFontDatabase>
 #include <QGuiApplication>
 #include <QIcon>
+#include <QKeySequence>
 #include <QProcess>
 #include <QJsonValue>
 #include <QJsonArray>
@@ -17,7 +18,7 @@
 #include <QtGlobal>
 
 #ifndef FOLIO_VERSION
-#define FOLIO_VERSION "0.27"
+#define FOLIO_VERSION "0.28"
 #endif
 
 Settings::Settings(QObject *parent) : QObject(parent)
@@ -90,6 +91,23 @@ void Settings::resetShortcut(const QString &action)
 {
     if (m_shortcuts.remove(action))
         saveShortcuts();
+}
+
+QString Settings::keyName(int key, int modifiers) const
+{
+    switch (key) {
+    case Qt::Key_Control: case Qt::Key_Shift: case Qt::Key_Alt: case Qt::Key_Meta:
+    case Qt::Key_AltGr: case Qt::Key_Super_L: case Qt::Key_Super_R: case Qt::Key_unknown:
+        return {};
+    case Qt::Key_Backtab: // Shift+Tab chega como Backtab
+        key = Qt::Key_Tab;
+        modifiers |= Qt::ShiftModifier;
+        break;
+    default:
+        break;
+    }
+    const auto mods = Qt::KeyboardModifiers(modifiers) & (Qt::ControlModifier | Qt::AltModifier | Qt::ShiftModifier | Qt::MetaModifier);
+    return QKeySequence(QKeyCombination(mods, Qt::Key(key))).toString(QKeySequence::PortableText);
 }
 
 void Settings::resetAllShortcuts()

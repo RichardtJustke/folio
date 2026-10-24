@@ -2,6 +2,11 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.28
+- Reatribuir teclas (Configurações → Gestos e atalhos): todas as ações listadas por grupo com o atalho atual. Clique no atalho e aperte a combinação nova; Backspace deixa sem atalho, Esc cancela. Se a combinação já era de outra ação, ela sai de lá (e aparece o aviso "Tirado de “…”"). ↺ volta ao padrão de uma ação; "Restaurar todos" volta todos.
+- Os atalhos trocados valem também na paleta de comandos e nas dicas dos menus. Ficam em `shortcuts` no `config.json`.
+- Correção: ícones de pasta pedidos com tamanho zero geravam avisos (e imagens vazias) ao montar a imagem do arraste.
+
 ## Alpha 0.27
 - Paleta de comandos (Ctrl+Shift+P): procura qualquer ação pelo nome (sem precisar de acentos) e mostra o atalho ao lado. Também traz configurações: abrir cada aba das Configurações, trocar o tema, o modo da barra lateral, o estilo dos ícones, ligar/desligar animações, gestos e abrir com um clique. Os comandos usados por último aparecem primeiro; os que não valem no momento (ex.: Colar na Lixeira) ficam esmaecidos.
 - Novos comandos sem atalho: "Ir para o Início", "Ir para Recentes", "Ir para a Lixeira".

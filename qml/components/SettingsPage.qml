@@ -41,6 +41,59 @@ Rectangle {
         { id: "about", label: "Sobre", icon: "help-about-symbolic", sub: "Versão e arquivo de configuração" }
     ]
     property string page: "appearance"
+
+    // ── atalhos (aba Gestos e atalhos) ──
+    property var actions: []
+    property var keysFor: a => a.keys
+    property string recording: ""   // id da ação esperando a tecla nova
+    property var notices: ({})      // id → aviso ("Tirado de “Copiar”")
+    readonly property var keyRows: {
+        const out = []
+        let last = ""
+        for (const a of actions) {
+            if (a.group !== last) { out.push({ header: true, group: a.group }); last = a.group }
+            out.push({ header: false, action: a })
+        }
+        return out
+    }
+    function startRecording(id) {
+        recording = id
+        keyRecorder.forceActiveFocus()
+    }
+    function assignKey(id, name) {
+        const n = Object.assign({}, notices)
+        delete n[id]
+        if (name !== "") {
+            // a combinação sai de quem já a usava
+            for (const a of actions) {
+                if (a.id === id) continue
+                const ks = keysFor(a)
+                if (!ks.includes(name)) continue
+                Settings.setShortcut(a.id, ks.filter(k => k !== name))
+                n[id] = "Tirado de “" + a.label + "”"
+            }
+        }
+        const a = actions.find(x => x.id === id)
+        const next = name === "" ? [] : [name]
+        if (a && JSON.stringify(a.keys) === JSON.stringify(next)) Settings.resetShortcut(id)
+        else Settings.setShortcut(id, next)
+        notices = n
+        recording = ""
+    }
+
+    Item { // recebe a combinação durante a gravação (antes dos atalhos da janela)
+        id: keyRecorder
+        Keys.onShortcutOverride: e => e.accepted = root.recording !== ""
+        Keys.onPressed: e => {
+            if (root.recording === "") return
+            e.accepted = true
+            if (e.key === Qt.Key_Escape && !e.modifiers) { root.recording = ""; return }
+            if ((e.key === Qt.Key_Backspace || e.key === Qt.Key_Delete) && !e.modifiers) { root.assignKey(root.recording, ""); return }
+            const name = Settings.keyName(e.key, e.modifiers)
+            if (name) root.assignKey(root.recording, name)
+        }
+        onActiveFocusChanged: if (!activeFocus) root.recording = ""
+    }
     property string query: ""
     readonly property string needle: query.trim().toLowerCase()
     function pageInfo(id) { return pages.find(p => p.id === id) }
@@ -181,7 +234,10 @@ Rectangle {
 
     readonly property bool narrow: width < 640
     // ao abrir, já dá para digitar e buscar
-    onVisibleChanged: if (visible) searchField.forceActiveFocus()
+    onVisibleChanged: {
+        if (visible) searchField.forceActiveFocus()
+        else recording = ""
+    }
 
     // cabeçalho
     Item {
@@ -604,6 +660,114 @@ Rectangle {
                 label: "Inverter direção do gesto"
                 hint: "Use se voltar e avançar saírem trocados no seu touchpad"
                 Toggle { on: Settings.swipeInvert; onToggled: v => Settings.swipeInvert = v }
+            }
+
+            PageItem {
+                page: "input"
+                height: 44
+                Text {
+                    anchors { left: parent.left; bottom: parent.bottom; bottomMargin: 6 }
+                    width: parent.width - restoreAll.width - 12
+                    text: "Clique num atalho e aperte a combinação nova. Backspace deixa sem atalho; Esc cancela."
+                    color: Theme.textDim
+                    font.pixelSize: 11
+                    wrapMode: Text.Wrap
+                }
+                DialogButton {
+                    id: restoreAll
+                    visible: Object.keys(Settings.shortcuts).length > 0
+                    anchors { right: parent.right; bottom: parent.bottom; bottomMargin: 2 }
+                    text: "Restaurar todos"
+                    onClicked: { Settings.resetAllShortcuts(); root.notices = ({}) }
+                }
+            }
+            Repeater {
+                model: root.keyRows
+                delegate: Item {
+                    id: keyRow
+                    required property var modelData
+                    readonly property bool header: modelData.header
+                    readonly property var action: modelData.action
+                    readonly property var keys: header ? [] : root.keysFor(action)
+                    readonly property bool custom: !header && Settings.shortcuts[action.id] !== undefined
+                    readonly property bool recordingThis: !header && root.recording === action.id
+                    readonly property string notice: header ? "" : root.notices[action.id] || ""
+                    readonly property string page: "input"
+                    readonly property string searchText: header ? "" : action.label + " " + action.group + " " + keys.join(" ") + " atalho tecla"
+                    width: parent.width
+                    height: header ? 34 : 40
+                    visible: header ? root.needle === "" && root.page === "input"
+                                    : root.needle !== "" ? root.matches(searchText) : root.page === "input"
+
+                    Text {
+                        visible: keyRow.header
+                        anchors { left: parent.left; bottom: parent.bottom; bottomMargin: 6 }
+                        text: keyRow.modelData.group || ""
+                        color: Theme.textFaint
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                        font.capitalization: Font.AllUppercase
+                    }
+
+                    Column {
+                        visible: !keyRow.header
+                        anchors { left: parent.left; right: chips.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                        Text { width: parent.width; text: keyRow.header ? "" : keyRow.action.label; color: Theme.text; font.pixelSize: Theme.fontSize; elide: Text.ElideRight }
+                        Text { visible: keyRow.notice !== ""; text: keyRow.notice; color: Theme.accent; font.pixelSize: 10 }
+                    }
+                    Row {
+                        id: chips
+                        visible: !keyRow.header
+                        anchors { right: resetBtn.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
+                        spacing: 4
+                        Repeater {
+                            model: keyRow.recordingThis ? ["Pressione as teclas…"] : keyRow.keys.length ? keyRow.keys : ["Sem atalho"]
+                            delegate: Rectangle {
+                                required property string modelData
+                                readonly property bool placeholder: keyRow.recordingThis || keyRow.keys.length === 0
+                                width: chipText.implicitWidth + 16; height: 24; radius: 6
+                                color: keyRow.recordingThis ? Theme.tint(Theme.accent, 0.16) : chipArea.containsMouse ? Theme.hover : Theme.pillBg
+                                border.width: 1
+                                border.color: keyRow.recordingThis ? Theme.accent : Theme.border
+                                Text {
+                                    id: chipText
+                                    anchors.centerIn: parent
+                                    text: modelData
+                                    color: placeholder ? (keyRow.recordingThis ? Theme.accent : Theme.textFaint) : Theme.text
+                                    font.pixelSize: 11
+                                    font.family: placeholder ? Qt.application.font.family : "monospace"
+                                }
+                                MouseArea {
+                                    id: chipArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: keyRow.recordingThis ? root.recording = "" : root.startRecording(keyRow.action.id)
+                                }
+                            }
+                        }
+                    }
+                    Rectangle { // volta ao padrão
+                        id: resetBtn
+                        visible: !keyRow.header
+                        anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                        width: 24; height: 24; radius: 12
+                        opacity: keyRow.custom ? 1 : 0
+                        color: resetArea.containsMouse ? Theme.hover : "transparent"
+                        Text { anchors.centerIn: parent; text: "↺"; color: Theme.textDim; font.pixelSize: 14 }
+                        MouseArea {
+                            id: resetArea
+                            anchors.fill: parent
+                            enabled: keyRow.custom
+                            hoverEnabled: true
+                            ToolTip.visible: containsMouse && keyRow.custom
+                            ToolTip.text: "Padrão: " + (keyRow.header ? "" : keyRow.action.keys.join(", ") || "sem atalho")
+                            ToolTip.delay: 400
+                            onClicked: Settings.resetShortcut(keyRow.action.id)
+                        }
+                    }
+                    Rectangle { visible: !keyRow.header; anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.border }
+                }
             }
 
             SectionTitle { page: "apps" }

@@ -80,6 +80,8 @@ public:
     Q_INVOKABLE void setShortcut(const QString &action, const QStringList &keys);
     Q_INVOKABLE void resetShortcut(const QString &action);
     Q_INVOKABLE void resetAllShortcuts();
+    // tecla + modificadores de um evento de teclado → "Ctrl+Shift+K" ("" para só modificadores)
+    Q_INVOKABLE QString keyName(int key, int modifiers) const;
     void setSavedTabs(const QVariantList &v);
 
     void setTheme(const QString &v);

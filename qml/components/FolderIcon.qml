@@ -13,7 +13,7 @@ Item {
 
     Image {
         anchors.fill: parent
-        sourceSize: Qt.size(root.width * 2, root.height * 2)
+        sourceSize: Qt.size(Math.max(16, root.width * 2), Math.max(16, root.height * 2)) // tamanho 0 (antes do layout) quebrava o provedor
         smooth: true
         source: root.system ? Theme.icon((root.glyph ? root.glyph.replace("-symbolic", "") + "," : "") + "folder", undefined) + "&pack=0"
               : Theme.fileIcon("folder", "", root.glyphOnly)
