@@ -9,6 +9,9 @@ Item {
     required property FileModel fileModel
     required property FileOps ops
     required property PlacesModel places
+    property GitRepo git: null
+    // código do Git para um item ("M", "?", "dir"…); "" fora de repositório
+    function gitStatus(path) { return git && git.active && git.revision >= 0 ? git.statusOf(path) : "" }
 
     readonly property bool listMode: fileModel.viewMode === "list"
     readonly property bool columnMode: fileModel.viewMode === "column"

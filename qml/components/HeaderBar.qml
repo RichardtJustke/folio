@@ -10,6 +10,8 @@ Item {
     required property Navigator navigator
     required property FileOps ops
 
+    property GitRepo git: null
+    readonly property bool inRepo: !!git && git.active
     property alias search: searchField
     property alias pathBar: pathBar
     property bool sidebarHidden: false
@@ -24,6 +26,7 @@ Item {
     signal topClicked
 
     signal customizeToolbar
+    signal newBranch
     signal newFolder
     signal emptyTrash
     signal focusView
@@ -81,7 +84,7 @@ Item {
 
     PathBar {
         id: pathBar
-        anchors { left: nav.right; leftMargin: 12; right: tools.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
+        anchors { left: nav.right; leftMargin: 12; right: gitPill.visible ? gitPill.left : tools.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
         path: root.fileModel.path
         title: root.fileModel.title
         special: root.fileModel.isTrash || root.fileModel.isSearch || root.fileModel.path.startsWith("folio:")
@@ -193,6 +196,98 @@ Item {
                     onTriggered: root.fileModel.groupByDate = !root.fileModel.groupByDate
                 }
             }
+        }
+    }
+
+    // ── Git: branch, ↑/↓ e mudanças; o clique abre o menu de branches e sincronização ──
+    Rectangle {
+        id: gitPill
+        visible: root.inRepo && !root.tiny
+        anchors { right: tools.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
+        width: gitRow.width + 20
+        height: 28
+        radius: 14
+        color: gitArea.containsMouse || gitMenu.opened ? Theme.hover : Theme.pillBg
+        border.width: 1
+        border.color: Theme.border
+        Row {
+            id: gitRow
+            anchors.centerIn: parent
+            spacing: 6
+            Image {
+                anchors.verticalCenter: parent.verticalCenter
+                width: 14; height: 14
+                sourceSize: Qt.size(28, 28)
+                source: Theme.icon("vcs-branch-symbolic", root.git && root.git.busy ? Theme.accent : Theme.textDim)
+                RotationAnimation on rotation { running: !!root.git && root.git.busy; loops: Animation.Infinite; from: 0; to: 360; duration: 1200 }
+                onVisibleChanged: rotation = 0
+            }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: root.git ? root.git.branch : ""
+                color: Theme.text
+                font.pixelSize: 12
+                font.weight: Font.DemiBold
+                elide: Text.ElideRight
+                width: Math.min(implicitWidth, root.narrow ? 70 : 140)
+            }
+            Text {
+                visible: !!root.git && (root.git.ahead > 0 || root.git.behind > 0)
+                anchors.verticalCenter: parent.verticalCenter
+                text: root.git ? (root.git.ahead > 0 ? "↑" + root.git.ahead : "") + (root.git.behind > 0 ? (root.git.ahead > 0 ? " " : "") + "↓" + root.git.behind : "") : ""
+                color: Theme.accent
+                font.pixelSize: 11
+                font.weight: Font.DemiBold
+            }
+            Rectangle {
+                visible: !!root.git && root.git.changes > 0
+                anchors.verticalCenter: parent.verticalCenter
+                width: changesText.implicitWidth + 10; height: 16; radius: 8
+                color: Theme.tint(Qt.color("#ff9f0a"), 0.22)
+                Text { id: changesText; anchors.centerIn: parent; text: root.git ? root.git.changes : ""; color: "#ff9f0a"; font.pixelSize: 10; font.weight: Font.Bold }
+            }
+        }
+        MouseArea {
+            id: gitArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            ToolTip.visible: containsMouse && !gitMenu.opened
+            ToolTip.delay: 600
+            ToolTip.text: !root.git ? "" : root.git.busy ? root.git.busyLabel + "…"
+                : "Branch " + root.git.branch + (root.git.upstream ? " → " + root.git.upstream : " (sem upstream)")
+                  + (root.git.changes ? " · " + root.git.changes + (root.git.changes === 1 ? " arquivo mudou" : " arquivos mudaram") : "")
+            onClicked: gitMenu.popup(gitPill, 0, gitPill.height + 4)
+        }
+        GlassMenu {
+            id: gitMenu
+            GlassMenuItem { text: "Branches"; enabled: false }
+            Repeater {
+                model: root.git ? root.git.branches : []
+                delegate: GlassMenuItem {
+                    required property string modelData
+                    text: modelData
+                    tick: !!root.git && modelData === root.git.branch
+                    enabled: !!root.git && !root.git.busy
+                    onTriggered: if (modelData !== root.git.branch) root.git.switchBranch(modelData)
+                }
+            }
+            GlassMenuItem { text: "Nova Branch…"; enabled: !!root.git && !root.git.busy; onTriggered: root.newBranch() }
+            MenuSeparator { contentItem: Rectangle { implicitHeight: 1; color: Theme.border } }
+            GlassMenuItem {
+                text: "Atualizar (Pull)" + (root.git && root.git.behind > 0 ? " — " + root.git.behind + " novo(s)" : "")
+                enabled: !!root.git && !root.git.busy && root.git.upstream !== ""
+                onTriggered: root.git.pull()
+            }
+            GlassMenuItem {
+                text: "Enviar (Push)" + (root.git && root.git.ahead > 0 ? " — " + root.git.ahead + " commit(s)" : "")
+                enabled: !!root.git && !root.git.busy
+                onTriggered: root.git.push()
+            }
+            GlassMenuItem { text: "Buscar (Fetch)"; enabled: !!root.git && !root.git.busy; onTriggered: root.git.fetch() }
+            MenuSeparator { contentItem: Rectangle { implicitHeight: 1; color: Theme.border } }
+            GlassMenuItem { text: "Abrir Terminal na Raiz do Repositório"; onTriggered: root.ops.openTerminal(root.git.root) }
+            GlassMenuItem { text: "Ir para a Raiz do Repositório"; onTriggered: root.navigator.go(root.git.root) }
         }
     }
 

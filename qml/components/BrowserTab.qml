@@ -14,6 +14,7 @@ Item {
     property alias navigator: nav
     property alias fileModel: fm
     property alias view: grid
+    property alias git: git
 
     signal openInNewTab(string path)
     signal titleUpdated(int index, string title)
@@ -54,6 +55,18 @@ Item {
 
     Navigator { id: nav }
 
+    // repositório Git da pasta (branch e estado dos arquivos); relê quando a listagem muda
+    GitRepo {
+        id: git
+        path: fm.path
+        enabled: Settings.gitIntegration
+    }
+    Timer { id: gitRefresh; interval: 400; onTriggered: git.refresh() }
+    Connections {
+        target: fm
+        function onEntriesChanged() { if (git.active) gitRefresh.restart() }
+    }
+
     FileModel {
         id: fm
         columns: grid.columns
@@ -90,6 +103,7 @@ Item {
         anchors.fill: parent
         visible: !root.home
         fileModel: fm
+        git: git
         ops: root.ops
         places: root.places
         focus: true

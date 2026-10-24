@@ -731,6 +731,13 @@ Rectangle {
             }
             Line {
                 page: "behavior"
+                label: "Integração com Git"
+                hint: "Em pastas de repositórios: branch no topo (trocar, criar, pull, push) e arquivos modificados marcados"
+                keywords: "git branch repositório commit push pull"
+                Toggle { on: Settings.gitIntegration; onToggled: v => Settings.gitIntegration = v }
+            }
+            Line {
+                page: "behavior"
                 label: "Confirmar antes de excluir permanentemente"
                 Toggle { on: Settings.confirmTrash; onToggled: v => Settings.confirmTrash = v }
             }

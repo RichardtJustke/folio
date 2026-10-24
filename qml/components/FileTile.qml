@@ -68,6 +68,23 @@ Item {
                 border.color: Theme.overlay(0.18)
                 radius: 2
             }
+            Rectangle { // estado no Git
+                readonly property string code: root.view.gitStatus(root.entry.path)
+                visible: code !== ""
+                anchors { right: parent.right; bottom: parent.bottom; margins: 4 }
+                width: code === "dir" ? 8 : 15; height: width; radius: width / 2
+                color: Theme.gitColor(code)
+                border.width: 1.5
+                border.color: Theme.light ? "white" : "#2a2a2c"
+                Text {
+                    visible: parent.code !== "dir"
+                    anchors.centerIn: parent
+                    text: parent.code === "?" ? "+" : parent.code
+                    color: "white"
+                    font.pixelSize: 8
+                    font.weight: Font.Bold
+                }
+            }
             Image { // emblema de link simbólico
                 visible: root.entry.isSymlink
                 anchors { left: parent.left; bottom: parent.bottom; margins: 6 }

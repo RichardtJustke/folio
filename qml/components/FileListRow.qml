@@ -52,12 +52,23 @@ Item {
             }
             TagDots {
                 id: rowTags
-                anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                anchors { right: gitMark.left; rightMargin: gitMark.visible ? 6 : 0; verticalCenter: parent.verticalCenter }
                 tags: root.entry.tags
+            }
+            Text { // estado no Git
+                id: gitMark
+                readonly property string code: root.view.gitStatus(root.entry.path)
+                visible: code !== ""
+                anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                width: visible ? implicitWidth : 0
+                text: code === "dir" ? "•" : code === "?" ? "+" : code
+                color: Theme.gitColor(code)
+                font.pixelSize: Theme.fontSize - 1
+                font.weight: Font.Bold
             }
             Text {
                 visible: !root.renaming
-                anchors { left: icon.right; leftMargin: 8; right: rowTags.visible ? rowTags.left : parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                anchors { left: icon.right; leftMargin: 8; right: rowTags.visible ? rowTags.left : gitMark.visible ? gitMark.left : parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
                 text: {
                     const fm = root.view.fileModel
                     if (fm && fm.showExtensions && root.entry.extension && !root.entry.isDir)

@@ -31,6 +31,7 @@ class Settings : public QObject
     Q_PROPERTY(QStringList toolbar READ toolbar WRITE setToolbar NOTIFY changed)
     Q_PROPERTY(bool singleWindow READ singleWindow WRITE setSingleWindow NOTIFY changed)
     Q_PROPERTY(bool swipeNavigation READ swipeNavigation WRITE setSwipeNavigation NOTIFY changed)
+    Q_PROPERTY(bool gitIntegration READ gitIntegration WRITE setGitIntegration NOTIFY changed)
     Q_PROPERTY(bool swipeInvert READ swipeInvert WRITE setSwipeInvert NOTIFY changed)
     Q_PROPERTY(bool legibility READ legibility WRITE setLegibility NOTIFY changed)
     Q_PROPERTY(bool reduceMotion READ reduceMotion WRITE setReduceMotion NOTIFY changed)
@@ -67,6 +68,8 @@ public:
     bool previewPanel() const { return m_previewPanel; }
     bool singleWindow() const { return m_singleWindow; }
     bool swipeNavigation() const { return m_swipe; }
+    bool gitIntegration() const { return m_git; }
+    void setGitIntegration(bool v);
     bool swipeInvert() const { return m_swipeInvert; }
     bool legibility() const { return m_legibility; }
     bool reduceMotion() const { return m_reduceMotion; }
@@ -146,6 +149,7 @@ private:
     bool m_previewPanel = false;
     bool m_singleWindow = false;
     bool m_swipe = true;
+    bool m_git = true;
     bool m_swipeInvert = false;
     bool m_legibility = true;
     bool m_reduceMotion = false;

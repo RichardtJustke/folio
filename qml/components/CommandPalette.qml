@@ -49,8 +49,15 @@ Popup {
         const c = results[i]
         if (!c || !available(c)) return
         used = [c.id].concat(used.filter(id => id !== c.id)).slice(0, 8)
+        pending = c.run
         close()
-        Qt.callLater(c.run)
+    }
+    // roda depois de fechar (e de o foco voltar à vista): diálogos abertos pelo comando ficam com o foco
+    property var pending: null
+    onClosed: {
+        const run = pending
+        pending = null
+        if (run) Qt.callLater(run)
     }
 
     function keyLabel(c) {

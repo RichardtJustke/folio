@@ -2,6 +2,13 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.30
+- Integração com Git: em pastas de um repositório aparece no topo a branch atual, ↑/↓ (commits à frente/atrás do remoto) e quantos arquivos mudaram. O clique abre o menu: trocar de branch, **Nova Branch…**, **Atualizar (Pull)**, **Enviar (Push)** (na primeira vez já cria o upstream), **Buscar (Fetch)**, abrir terminal ou ir para a raiz do repositório.
+- Arquivos marcados na grade e na lista: M modificado (laranja), A adicionado (verde), + novo fora do Git (azul), D removido, R renomeado e U em conflito (vermelho); pastas com mudanças dentro levam uma bolinha.
+- O git nunca pede senha (sem prompt no terminal, SSH em modo não interativo): se precisar de credenciais, aparece o erro do git num aviso.
+- Ações do Git também na paleta de comandos e em Configurações → Atalhos. Configurações → Comportamento → "Integração com Git" desliga tudo.
+- Paleta de comandos: o comando roda depois que ela fecha, então diálogos abertos por ele (ex.: Nova branch) já recebem o foco.
+
 ## Alpha 0.29
 - Barra de ferramentas personalizável (Configurações → Janela e barra lateral, ou clique direito no topo → "Personalizar Barra de Ferramentas…"): cada botão vira um cartão com ‹ › para reordenar e × para tirar; "+ Adicionar" traz os que estão de fora. Botões novos disponíveis: Dividir janela, Nova aba, Pasta acima, Recarregar, Início, Terminal, Paleta de comandos, Busca rápida e Copiar caminho. "Restaurar" volta ao padrão.
 - Os botões do topo mostram uma dica com o nome e o atalho ao passar o mouse.

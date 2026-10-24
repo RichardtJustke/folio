@@ -103,6 +103,23 @@ QtObject {
             + "&accent=" + Settings.accent.slice(1) + "&light=" + (light ? 1 : 0) + (tileOnly ? "&tile=1" : "")
     }
 
+    // estado do Git de um arquivo (Folio: GitRepo.statusOf)
+    function gitColor(code) {
+        switch (code) {
+        case "M": return "#ff9f0a"
+        case "A": return "#30d158"
+        case "?": return "#64d2ff"
+        case "D": case "U": return "#ff453a"
+        case "R": return "#bf5af2"
+        case "dir": return tint(Qt.color("#ff9f0a"), 0.7)
+        default: return "transparent"
+        }
+    }
+    function gitLabel(code) {
+        return ({ M: "Modificado", A: "Adicionado", "?": "Novo (fora do Git)", D: "Removido", R: "Renomeado", U: "Em conflito",
+                  dir: "Tem mudanças dentro" })[code] || ""
+    }
+
     // primeira tecla configurada para uma ação (Configurações → Gestos e atalhos), ou a padrão
     function keyFor(id, fallback) {
         const k = Settings.shortcuts[id]

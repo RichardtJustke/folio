@@ -208,6 +208,11 @@ Window {
         onServerConnected: path => { connectDialog.close(); nav.go(path) }
     }
 
+    Connections { // avisos do Git (troca de branch, pull, push…)
+        target: win.tab ? win.tab.git : null
+        function onMessage(text, error) { toast.show(text, error) }
+    }
+
     PlacesModel {
         id: placesModel
         onErrorOccurred: msg => toast.show(msg || "Falha ao ejetar", true)
@@ -398,6 +403,8 @@ Window {
                 onNewFolder: win.tab.newFolder()
                 onEmptyTrash: win.requestEmptyTrash()
                 onCustomizeToolbar: { settingsPage.openPage("window"); win.settingsOpen = true }
+                git: win.tab ? win.tab.git : null
+                onNewBranch: promptDialog.ask("Nova branch", "nome-da-branch", "Criar e trocar", v => win.tab.git.createBranch(v))
                 onFocusView: win.focusView()
             }
         }
@@ -653,6 +660,7 @@ Window {
                                    || confirmDialog.opened || conflictDialog.opened || promptDialog.opened
                                    || propertiesDialog.opened || openWithDialog.opened || connectDialog.opened || settingsOpen
     readonly property bool ready: fm !== null && !typing
+    readonly property bool inRepo: !!tab && tab.git.active && !tab.git.busy
     readonly property bool writable: ready && !fm.isTrash && !fm.path.startsWith("folio:") // pasta de verdade (colar, criar)
 
     // ── ações: alimentam os atalhos de teclado, a paleta de comandos (Ctrl+Shift+P) e Configurações → Atalhos ──
@@ -708,6 +716,13 @@ Window {
         { id: "zoomOut", label: "Diminuir ícones", group: "Vista", keys: ["Ctrl+-"], when: () => true, run: () => zoom(-8) },
         { id: "zoomReset", label: "Tamanho padrão dos ícones", group: "Vista", keys: ["Ctrl+0"], when: () => true, run: () => Settings.iconSize = 76 },
         { id: "fullscreen", label: "Tela cheia", group: "Vista", keys: ["F11"], when: () => true, run: () => toggleFullscreen() },
+        // Git (pasta dentro de um repositório)
+        { id: "gitNewBranch", label: "Git: nova branch…", group: "Git", keys: [], when: () => inRepo,
+          run: () => promptDialog.ask("Nova branch", "nome-da-branch", "Criar e trocar", v => tab.git.createBranch(v)) },
+        { id: "gitPull", label: "Git: atualizar (pull)", group: "Git", keys: [], when: () => inRepo && tab.git.upstream !== "", run: () => tab.git.pull() },
+        { id: "gitPush", label: "Git: enviar (push)", group: "Git", keys: [], when: () => inRepo, run: () => tab.git.push() },
+        { id: "gitFetch", label: "Git: buscar (fetch)", group: "Git", keys: [], when: () => inRepo, run: () => tab.git.fetch() },
+        { id: "gitRoot", label: "Git: ir para a raiz do repositório", group: "Git", keys: [], when: () => inRepo, run: () => nav.go(tab.git.root) },
         // Janela e abas
         { id: "newTab", label: "Nova aba", group: "Janela e abas", keys: ["Ctrl+T"], when: () => true, run: () => newTab(fm ? fm.path : fileOps.startPath()) },
         { id: "closeTab", label: "Fechar aba", group: "Janela e abas", keys: ["Ctrl+W"], when: () => true, run: () => tabStrip.requestClose(currentTab) },
