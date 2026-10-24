@@ -133,8 +133,12 @@ Item {
             mouse.collapseOnRelease = false
             const paths = root.view.fileModel.selectedPaths()
             proxy.Drag.mimeData = { "text/uri-list": root.view.ops.uriList(paths) }
-            proxy.Drag.imageSource = root.entry.isDir ? Theme.folderSvg : Theme.icon(root.entry.icon)
-            proxy.Drag.active = true
+            proxy.Drag.hotSpot = Qt.point(34, 40) // cursor no meio do ícone da frente
+            root.view.dragImage(root.entry, url => {
+                if (!mouse.drag.active) return // soltou antes da captura ficar pronta
+                proxy.Drag.imageSource = url
+                proxy.Drag.active = true
+            })
         }
     }
 

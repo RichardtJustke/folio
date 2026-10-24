@@ -2,6 +2,9 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.24
+- Arrastar vários itens mostra os ícones empilhados (até 3, cada um com o seu tipo) e a quantidade discreta no canto do ícone da frente. Com um item só, aparece só o ícone, como na grade.
+
 ## Alpha 0.23
 - Configurações em abas: Aparência, Janela e barra lateral, Animações, Comportamento, Gestos e atalhos, Aplicativos padrão e Sobre, numa lista à esquerda (só ícones em janela estreita).
 - Busca no topo: ao abrir as Configurações já dá para digitar; mostra as opções de todas as abas que batem, agrupadas, e a contagem ao lado de cada aba. Esc limpa a busca (com ela vazia, fecha).

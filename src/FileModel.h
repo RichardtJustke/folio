@@ -86,6 +86,7 @@ public:
     Q_INVOKABLE int selectMatching(const QString &pattern);
     Q_INVOKABLE void selectPath(const QString &path);
     Q_INVOKABLE QStringList selectedPaths() const;
+    Q_INVOKABLE QVariantList selectedEntries(int limit) const; // as primeiras selecionadas (imagem do arraste)
     Q_INVOKABLE int rowOfIndex(int index) const { return m_rows.rowOfEntry(index); }
     Q_INVOKABLE void moveCurrent(int delta, int modifiers = 0);
     Q_INVOKABLE void moveRow(int direction, int modifiers = 0);

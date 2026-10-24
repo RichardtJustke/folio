@@ -95,6 +95,12 @@ Item {
 
     function visiblePaths() { return Object.keys(liveTiles) }
 
+    // imagem do arraste (pilha + quantidade); done(url) recebe a captura
+    function dragImage(entry, done) {
+        dragGhost.render(entry, fileModel.selectedEntries(3), fileModel.selectedCount, done)
+    }
+    DragGhost { id: dragGhost }
+
     function shake(paths) {
         for (const p of paths) { const fx = liveTiles[p]; if (fx) fx.shake() }
     }

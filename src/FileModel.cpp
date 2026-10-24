@@ -725,6 +725,15 @@ QStringList FileModel::selectedPaths() const
     return out;
 }
 
+QVariantList FileModel::selectedEntries(int limit) const
+{
+    QVariantList out;
+    for (int i = 0; i < m_entries.size() && out.size() < limit; ++i)
+        if (m_selected.contains(m_entries.at(i).path))
+            out.append(RowModel::entryToMap(m_entries.at(i), i));
+    return out;
+}
+
 void FileModel::moveCurrent(int delta, int modifiers)
 {
     if (m_entries.isEmpty())
