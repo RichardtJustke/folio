@@ -12,6 +12,7 @@ Rectangle {
     signal openSettings
     signal addFolder
     signal connectServer
+    signal addCloud
     signal topClicked
 
     signal navigate(string path)
@@ -181,6 +182,13 @@ Rectangle {
                 name: "Conectar ao servidor…"
                 icon: "network-server-symbolic,folder-remote-symbolic"
                 onClicked: root.connectServer()
+            }
+            SidebarItem {
+                width: parent.width
+                compact: root.compact
+                name: "Adicionar nuvem…"
+                icon: "weather-overcast-symbolic"
+                onClicked: root.addCloud()
             }
             // ── Smart Folders ──
             Repeater {

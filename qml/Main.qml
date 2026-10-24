@@ -213,6 +213,15 @@ Window {
         function onMessage(text, error) { toast.show(text, error) }
     }
 
+    CloudDrives {
+        id: cloud
+        onMounted: (remote, path) => { if (win.nav) win.nav.go(path) }
+        onAdded: remote => { toast.show("“" + remote + "” conectado"); cloud.mount(remote) }
+        onRemotesChanged: placesModel.refresh()
+        onMessage: (text, error) => toast.show(text, error)
+        onChanged: if (busy && !cloudDialog.opened) toast.show(busyLabel + "…")
+    }
+
     PlacesModel {
         id: placesModel
         onErrorOccurred: msg => toast.show(msg || "Falha ao ejetar", true)
@@ -354,6 +363,7 @@ Window {
             onOpenSettings: win.settingsOpen = !win.settingsOpen
             onTopClicked: win.topClick()
             onConnectServer: connectDialog.show()
+            onAddCloud: cloudDialog.show()
             window: win
             places: placesModel
             currentPath: win.fm ? win.fm.path : ""
@@ -372,6 +382,7 @@ Window {
             onNavigate: path => {
                 win.settingsOpen = false
                 if (win.sidebarOverlay) win.sidebarRevealed = false
+                if (path.startsWith("folio:cloud:")) { cloud.mount(path.slice(12)); return } // monta e depois abre
                 if (path !== "folio:network") { win.nav.go(path); return }
                 if (fileOps.hasNetworkMounts()) win.nav.go(fileOps.networkDir())
                 else connectDialog.show()
@@ -652,6 +663,7 @@ Window {
         onClosed: win.focusView()
     }
     ConnectDialog { id: connectDialog; ops: fileOps }
+    CloudDialog { id: cloudDialog; cloud: cloud; ops: fileOps }
     PropertiesDialog { id: propertiesDialog; ops: fileOps }
     OpenWithDialog { id: openWithDialog; ops: fileOps }
 
@@ -698,6 +710,7 @@ Window {
         { id: "homeDir", label: "Ir para a pasta pessoal", group: "Navegação", keys: ["Alt+Home"], when: () => ready, run: () => nav.go("~") },
         { id: "homePage", label: "Ir para o Início", group: "Navegação", keys: [], when: () => ready, run: () => nav.go("folio:home") },
         { id: "recent", label: "Ir para Recentes", group: "Navegação", keys: [], when: () => ready, run: () => nav.go("folio:recent") },
+        { id: "addCloud", label: "Adicionar nuvem…", group: "Navegação", keys: [], when: () => true, run: () => cloudDialog.show() },
         { id: "trashDir", label: "Ir para a Lixeira", group: "Navegação", keys: [], when: () => ready, run: () => nav.go(fileOps.trashDir) },
         { id: "reload", label: "Recarregar", group: "Navegação", keys: ["F5", "Ctrl+R"], when: () => ready, run: () => fm.reload() },
         { id: "editPath", label: "Digitar caminho", group: "Navegação", keys: ["Ctrl+L"], when: () => fm !== null, run: () => { if (header.item) header.item.pathBar.edit() } },

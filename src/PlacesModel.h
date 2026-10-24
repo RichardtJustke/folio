@@ -48,6 +48,7 @@ private:
     QList<Place> loadStandard() const;
     QList<Place> loadFavorites() const;
     QList<Place> loadVolumes() const;
+    QList<Place> loadCloud() const;
     void saveFavorites(const QList<Place> &favs);
 
     QList<Place> m_places;

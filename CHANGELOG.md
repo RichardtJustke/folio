@@ -2,6 +2,11 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.31
+- Nuvem na barra lateral: as contas do **rclone** (Google Drive, OneDrive, Dropbox, Box, pCloud…) aparecem em "Nuvem". O clique monta a conta em `~/.local/share/folio/nuvem/<nome>` e abre; o botão de ejetar desmonta. Também entram as montagens do Google Drive/OneDrive das contas online (gvfs) e as pastas sincronizadas que existirem (`~/OneDrive`, `~/Dropbox`, `~/Google Drive`, `~/Nextcloud`, `~/MEGA`…).
+- "Adicionar nuvem…" (barra lateral ou paleta): escolha o serviço e o nome; o rclone abre o navegador para entrar na conta e a nuvem já é montada e aberta. "Outro serviço…" abre o `rclone config` no terminal. Sem o rclone instalado, o diálogo mostra o comando para instalar.
+- PKGBUILD: `rclone` e `git` como dependências opcionais.
+
 ## Alpha 0.30
 - Integração com Git: em pastas de um repositório aparece no topo a branch atual, ↑/↓ (commits à frente/atrás do remoto) e quantos arquivos mudaram. O clique abre o menu: trocar de branch, **Nova Branch…**, **Atualizar (Pull)**, **Enviar (Push)** (na primeira vez já cria o upstream), **Buscar (Fetch)**, abrir terminal ou ir para a raiz do repositório.
 - Arquivos marcados na grade e na lista: M modificado (laranja), A adicionado (verde), + novo fora do Git (azul), D removido, R renomeado e U em conflito (vermelho); pastas com mudanças dentro levam uma bolinha.

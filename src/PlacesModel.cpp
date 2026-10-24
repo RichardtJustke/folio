@@ -1,5 +1,6 @@
 #include "PlacesModel.h"
 
+#include "CloudDrives.h"
 #include "Config.h"
 
 #include <QDir>
@@ -8,7 +9,10 @@
 #include <QProcess>
 #include <QStandardPaths>
 #include <QStorageInfo>
+#include <QRegularExpression>
 #include <QUrl>
+
+#include <unistd.h>
 
 namespace {
 const QSet<QByteArray> kNetworkFs = {"cifs", "smb3", "nfs", "nfs4", "fuse.sshfs", "sshfs", "fuse.rclone", "davfs"};
@@ -145,8 +149,9 @@ QList<PlacesModel::Place> PlacesModel::loadVolumes() const
     out.append({QStringLiteral("Pasta pessoal"), QDir::homePath(), "user-home-symbolic", group, {}, formatFreeSpace(QDir::homePath()), {}, false, false});
     out.append({QStringLiteral("Computador"), "/", "computer-symbolic,drive-harddisk-symbolic", group, {}, formatFreeSpace("/"), {}, false, false});
 
+    const auto cloudRoot = CloudDrives::mountRoot() + "/";
     for (const auto &v : QStorageInfo::mountedVolumes()) {
-        if (!v.isValid() || !v.isReady() || !isUserVolume(v))
+        if (!v.isValid() || !v.isReady() || !isUserVolume(v) || v.rootPath().startsWith(cloudRoot)) // nuvens: grupo próprio
             continue;
         const bool net = kNetworkFs.contains(v.fileSystemType());
         const bool removable = v.rootPath().startsWith("/run/media/") || v.rootPath().startsWith("/media/");
@@ -160,6 +165,8 @@ QList<PlacesModel::Place> PlacesModel::loadVolumes() const
 
     out.append({QStringLiteral("Rede"), QStringLiteral("folio:network"),
                 "network-workgroup-symbolic,folder-remote-symbolic", group, {}, {}, {}, false, false});
+
+    out += loadCloud();
 
     // Smart folders (buscas salvas)
     const QString smartGroup = QStringLiteral("Smart");
@@ -225,6 +232,18 @@ void PlacesModel::saveFavorites(const QList<Place> &favs)
 
 void PlacesModel::eject(const QString &device)
 {
+    if (device.startsWith(QLatin1String("rclone:"))) { // nuvem montada pelo rclone
+        auto *proc = new QProcess(this);
+        connect(proc, &QProcess::finished, this, [this, proc](int code) {
+            if (code != 0)
+                emit errorOccurred(QString::fromLocal8Bit(proc->readAllStandardError()).trimmed());
+            proc->deleteLater();
+            refresh();
+        });
+        proc->start(QStandardPaths::findExecutable("fusermount3").isEmpty() ? "fusermount" : "fusermount3",
+                    {"-u", CloudDrives::mountPoint(device.mid(7))});
+        return;
+    }
     auto *proc = new QProcess(this);
     connect(proc, &QProcess::finished, this, [this, proc](int code) {
         if (code != 0)
@@ -341,6 +360,40 @@ QVariantList PlacesModel::quickAccess() const
         // pastas XDG levam o símbolo delas; favoritos do usuário são pastas comuns
         out.append(QVariantMap{{"name", p.name}, {"path", p.path},
                                {"glyph", p.favorite ? QString() : p.icon}, {"removable", p.favorite}});
+    }
+    return out;
+}
+
+// Nuvem: contas do rclone (montadas sob demanda), montagens do gvfs (contas online) e pastas sincronizadas
+QList<PlacesModel::Place> PlacesModel::loadCloud() const
+{
+    const QString group = QStringLiteral("Nuvem");
+    const QString icon = QStringLiteral("weather-overcast-symbolic,folder-remote-symbolic");
+    QList<Place> out;
+    for (const auto &v : CloudDrives::remotes()) {
+        const auto r = v.toMap();
+        const auto name = r.value("name").toString();
+        const auto mp = CloudDrives::mountPoint(name);
+        const bool mounted = CloudDrives::isMounted(mp);
+        // montada: o lugar é a pasta de verdade; senão, folio:cloud: pede a montagem
+        out.append({name, mounted ? mp : QStringLiteral("folio:cloud:") + name, icon, group,
+                    QStringLiteral("rclone:") + name, mounted ? formatFreeSpace(mp) : QString(), QStringLiteral("cloud"), mounted, false});
+    }
+    QDir gvfs(QStringLiteral("/run/user/%1/gvfs").arg(getuid()));
+    for (const auto &e : gvfs.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+        const auto n = e.fileName();
+        if (!n.startsWith("google-drive:") && !n.startsWith("onedrive:"))
+            continue;
+        const auto user = QRegularExpression("user=([^,]+)").match(n).captured(1);
+        const auto host = QRegularExpression("host=([^,]+)").match(n).captured(1);
+        const auto label = n.startsWith("google") ? QStringLiteral("Google Drive") : QStringLiteral("OneDrive");
+        out.append({user.isEmpty() ? label : label + " (" + user + (host.isEmpty() ? QString() : "@" + host) + ")",
+                    e.absoluteFilePath(), icon, group, {}, {}, QStringLiteral("cloud"), false, false});
+    }
+    for (const char *dir : {"OneDrive", "Dropbox", "Google Drive", "GoogleDrive", "Nextcloud", "MEGA", "pCloudDrive", "Insync"}) {
+        const auto path = QDir::homePath() + "/" + QString::fromUtf8(dir);
+        if (QFileInfo(path).isDir())
+            out.append({QString::fromUtf8(dir), path, icon, group, {}, {}, QStringLiteral("cloud"), false, false});
     }
     return out;
 }

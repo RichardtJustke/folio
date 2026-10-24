@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
-project(folio VERSION 0.30.0 LANGUAGES CXX)
-set(FOLIO_VERSION_STRING "0.30")
+project(folio VERSION 0.31.0 LANGUAGES CXX)
+set(FOLIO_VERSION_STRING "0.31")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -38,6 +38,7 @@ qt_add_qml_module(folio
         src/SwipeGesture.h src/SwipeGesture.cpp
         src/Hasher.h src/Hasher.cpp
         src/GitRepo.h src/GitRepo.cpp
+        src/CloudDrives.h src/CloudDrives.cpp
     QML_FILES
         qml/Main.qml
         qml/Theme.qml
@@ -73,6 +74,7 @@ qt_add_qml_module(folio
         qml/components/HomePage.qml
         qml/components/DragGhost.qml
         qml/components/CommandPalette.qml
+        qml/components/CloudDialog.qml
         qml/components/TagMenuItem.qml
         qml/components/TagDots.qml
         qml/components/BatchRenameDialog.qml
