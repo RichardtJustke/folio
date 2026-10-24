@@ -1,0 +1,566 @@
+<title>Folio Próximas Telas</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: cada pedido é uma seção com 2–3 propostas lado a lado, desenhadas como recortes da janela real do Folio (vidro escuro, destaque azul) */
+:root {
+  color-scheme: dark;
+  --page: #18181a;
+  --win: #2a2a2c;
+  --glass: rgba(255,255,255,0.045);
+  --card: rgba(255,255,255,0.06);
+  --card-hi: rgba(255,255,255,0.10);
+  --line: rgba(255,255,255,0.09);
+  --text: #ececec;
+  --dim: rgba(255,255,255,0.62);
+  --faint: rgba(255,255,255,0.38);
+  --accent: #3d8bff;
+  --accent-soft: rgba(61,139,255,0.18);
+  --folder-tile: rgba(61,139,255,0.16);
+  --ok: #30d158;
+  --font: "Noto Sans", "Inter", system-ui, sans-serif;
+  --mono: "JetBrains Mono", "DejaVu Sans Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--text); font-family: var(--font); }
+.wrap { padding-block: 32px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 56px; }
+header h1 { font-size: 22px; font-weight: 650; margin: 0 0 8px; text-wrap: balance; }
+header p { margin: 0; color: var(--dim); line-height: 1.55; max-width: 72ch; }
+section { display: flex; flex-direction: column; gap: 18px; }
+section > h2 { font-size: 17px; font-weight: 650; margin: 0; display: flex; gap: 10px; align-items: baseline; }
+section > h2 span { color: var(--accent); font-size: 13px; font-weight: 700; letter-spacing: .04em; }
+section > p { margin: 0; color: var(--dim); font-size: 13.5px; line-height: 1.55; max-width: 80ch; }
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 24px; align-items: start; }
+.opts.two { grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); }
+@media (max-width: 520px) { .opts, .opts.two { grid-template-columns: 1fr; } }
+.opt { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.opt h3 { margin: 0; font-size: 14px; font-weight: 650; display: flex; gap: 8px; align-items: baseline; }
+.opt h3 b { color: var(--accent); font-size: 12.5px; }
+.opt p { margin: 0; color: var(--dim); font-size: 12.5px; line-height: 1.5; }
+.frame { background: var(--win); border-radius: 14px; padding: 8px; border: 1px solid var(--line); overflow: hidden; min-width: 0; }
+.ic { width: 16px; height: 16px; flex: none; color: var(--accent); }
+.ic.dim { color: var(--dim); }
+.ic.faint { color: var(--faint); }
+.label { color: var(--faint); font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.sec-h { display: flex; align-items: center; gap: 6px; color: var(--dim); font-size: 12px; font-weight: 600; margin: 4px 2px 8px; }
+.sec-h svg { width: 12px; height: 12px; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* janela mini: barra lateral + conteúdo */
+.mini { display: grid; grid-template-columns: 118px 1fr; gap: 6px; min-height: 420px; font-size: 11.5px; }
+.side { background: var(--glass); border-radius: 10px; padding: 10px 6px; display: flex; flex-direction: column; gap: 2px; }
+.side .si { display: flex; gap: 7px; align-items: center; padding: 5px 6px; border-radius: 7px; color: var(--text); white-space: nowrap; overflow: hidden; }
+.side .si.on { background: var(--card-hi); }
+.side .si svg { width: 13px; height: 13px; color: var(--accent); flex: none; }
+.side .label { margin: 8px 6px 3px; font-size: 9.5px; }
+.main { background: var(--glass); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.main h4 { margin: 0; font-size: 15px; font-weight: 650; }
+
+/* Início */
+.qgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 6px; }
+.qtile { background: var(--card); border-radius: 9px; padding: 10px 6px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; min-width: 0; }
+.qtile .t { font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.qtile .pin { position: absolute; top: 5px; right: 5px; width: 10px; height: 10px; color: var(--faint); }
+.fold { width: 30px; height: 30px; border-radius: 8px; background: var(--folder-tile); display: grid; place-items: center; }
+.fold svg { width: 17px; height: 17px; color: var(--accent); }
+.drives { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; }
+.drive { background: var(--card); border-radius: 9px; padding: 9px 10px; display: grid; grid-template-columns: 22px 1fr; gap: 4px 9px; align-items: center; }
+.drive svg { width: 20px; height: 20px; color: var(--dim); grid-row: span 3; }
+.drive .n { font-weight: 600; font-size: 11.5px; }
+.bar { height: 4px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.drive .f { color: var(--faint); font-size: 10px; }
+.recent { display: flex; flex-direction: column; }
+.rrow { display: grid; grid-template-columns: 16px minmax(0, 1fr) minmax(0, 1.2fr) auto; gap: 8px; align-items: center; padding: 5px 4px; border-radius: 6px; font-size: 11px; }
+.rrow + .rrow { border-top: 1px solid var(--line); }
+.rrow .p { color: var(--faint); font-family: var(--mono); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rrow .d { color: var(--faint); font-size: 10px; }
+.rrow .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ftype { width: 16px; height: 16px; border-radius: 4px; display: grid; place-items: center; font-size: 6.5px; font-weight: 800; color: white; }
+.thumbs { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 6px; }
+.thumb { border-radius: 8px; aspect-ratio: 4/3; position: relative; overflow: hidden; background: var(--card); }
+.thumb .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 6px 4px; font-size: 9.5px; background: linear-gradient(transparent, rgba(0,0,0,.7)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; background: var(--card); border-radius: 999px; padding: 5px 10px 5px 7px; font-size: 11px; }
+.chip svg { width: 13px; height: 13px; color: var(--accent); }
+.cols2 { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 10px; }
+.panel-c { background: var(--card); border-radius: 9px; padding: 10px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.daygrp { color: var(--faint); font-size: 10px; font-weight: 600; margin: 6px 4px 2px; }
+.list-i { display: flex; align-items: center; gap: 8px; padding: 4px; font-size: 11px; }
+.list-i .grow { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.list-i .r { color: var(--faint); font-size: 10px; }
+
+/* Configurações */
+.cfg { display: grid; grid-template-columns: 150px 1fr; gap: 10px; min-height: 380px; font-size: 11.5px; }
+.cfg-nav { display: flex; flex-direction: column; gap: 2px; }
+.search { display: flex; align-items: center; gap: 7px; background: var(--card); border-radius: 8px; padding: 7px 9px; color: var(--faint); font-size: 11px; margin-bottom: 8px; }
+.search svg { width: 12px; height: 12px; }
+.nv { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; color: var(--dim); }
+.nv svg { width: 14px; height: 14px; color: var(--dim); }
+.nv.on { background: var(--card-hi); color: var(--text); }
+.nv.on svg { color: var(--accent); }
+.cfg-body { background: var(--glass); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.cfg-body h5 { margin: 0; font-size: 14px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
+.cfg-body h5 svg { width: 15px; height: 15px; color: var(--accent); }
+.cfg-body .sub { color: var(--faint); font-size: 11px; margin-top: -6px; }
+.line { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); }
+.line .k { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.line .h { color: var(--faint); font-size: 10px; }
+.seg { display: inline-flex; background: var(--card); border-radius: 7px; padding: 2px; gap: 2px; flex: none; }
+.seg i { font-style: normal; padding: 3px 8px; border-radius: 5px; font-size: 10.5px; color: var(--dim); }
+.seg i.on { background: var(--card-hi); color: var(--text); }
+.tg { width: 28px; height: 16px; border-radius: 9px; background: var(--accent); position: relative; flex: none; }
+.tg::after { content: ""; position: absolute; right: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: white; }
+.tg.off { background: var(--card-hi); }
+.tg.off::after { right: auto; left: 2px; }
+.swatches { display: flex; gap: 5px; }
+.swatches i { width: 14px; height: 14px; border-radius: 50%; display: block; }
+.themes { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+.theme { border-radius: 9px; background: var(--card); padding: 6px; display: flex; flex-direction: column; gap: 6px; border: 1px solid transparent; }
+.theme.on { border-color: var(--accent); }
+.theme .pv { height: 46px; border-radius: 6px; display: grid; grid-template-columns: 30% 1fr; gap: 3px; padding: 4px; }
+.theme .pv b, .theme .pv u { border-radius: 3px; display: block; }
+.theme .t { font-size: 10.5px; }
+.tabs-top { display: flex; gap: 2px; background: var(--card); border-radius: 9px; padding: 3px; overflow-x: auto; }
+.tabs-top i { font-style: normal; display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 7px; font-size: 11px; color: var(--dim); white-space: nowrap; }
+.tabs-top i svg { width: 12px; height: 12px; }
+.tabs-top i.on { background: var(--card-hi); color: var(--text); }
+.tabs-top i.on svg { color: var(--accent); }
+.rail { display: grid; grid-template-columns: 44px 1fr; gap: 10px; min-height: 380px; font-size: 11.5px; }
+.rail-nav { display: flex; flex-direction: column; gap: 4px; align-items: center; background: var(--glass); border-radius: 10px; padding: 8px 0; }
+.rail-nav span { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; }
+.rail-nav span svg { width: 15px; height: 15px; color: var(--dim); }
+.rail-nav span.on { background: var(--accent-soft); }
+.rail-nav span.on svg { color: var(--accent); }
+
+/* Arrastar */
+.dragstage { height: 210px; border-radius: 10px; background: var(--glass); position: relative; overflow: hidden; }
+.dragstage .bg { position: absolute; inset: 14px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; opacity: .45; }
+.dragstage .bg div { display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 9.5px; color: var(--dim); }
+.dragstage .bg .fold { width: 40px; height: 40px; }
+.ghost { position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%) rotate(-3deg); }
+.gtile { width: 54px; height: 54px; border-radius: 13px; background: rgba(61,139,255,0.28); display: grid; place-items: center; box-shadow: 0 10px 26px rgba(0,0,0,.45); position: relative; backdrop-filter: blur(6px); }
+.gtile svg { width: 28px; height: 28px; color: #8fbcff; }
+.gtile.file { background: rgba(232,131,58,0.30); }
+.gtile.file svg { color: #ffb37a; }
+.cursor { position: absolute; width: 14px; height: 18px; left: calc(50% + 14px); top: calc(52% + 16px); }
+.badge-a { position: absolute; top: -7px; right: -7px; min-width: 20px; height: 20px; border-radius: 10px; background: var(--accent); color: white; font-size: 11px; font-weight: 700; display: grid; place-items: center; padding: 0 5px; border: 2px solid var(--win); }
+.badge-c { position: absolute; bottom: 3px; right: 4px; font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.85); background: rgba(0,0,0,0.38); border-radius: 5px; padding: 0 4px; line-height: 14px; }
+.stack { position: relative; width: 66px; height: 62px; }
+.stack .gtile { position: absolute; }
+.stack .gtile:nth-child(1) { left: 10px; top: 0; transform: rotate(7deg); opacity: .55; }
+.stack .gtile:nth-child(2) { left: 5px; top: 3px; transform: rotate(3deg); opacity: .8; }
+.stack .gtile:nth-child(3) { left: 0; top: 6px; }
+.mixed { display: flex; gap: 4px; align-items: flex-end; }
+.mixed .gtile { width: 44px; height: 44px; border-radius: 11px; }
+.mixed .gtile svg { width: 22px; height: 22px; }
+.dropto { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center; color: var(--faint); font-size: 10.5px; }
+
+/* Barra lateral automática */
+.sbstage { height: 260px; border-radius: 10px; background: var(--glass); position: relative; overflow: hidden; display: flex; }
+.sbstage .content { flex: 1; padding: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 10px; align-content: start; }
+.sbstage .content div { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 9.5px; color: var(--dim); }
+.sbstage .content .fold { width: 36px; height: 36px; }
+.over { position: absolute; left: 6px; top: 6px; bottom: 6px; width: 138px; border-radius: 10px; background: rgba(52,52,56,0.92); box-shadow: 8px 0 30px rgba(0,0,0,.45); padding: 10px 6px; display: flex; flex-direction: column; gap: 2px; font-size: 11px; backdrop-filter: blur(10px); }
+.over .si { display: flex; gap: 7px; align-items: center; padding: 5px 6px; border-radius: 7px; white-space: nowrap; }
+.over .si svg { width: 13px; height: 13px; color: var(--accent); }
+.over .si.on { background: var(--card-hi); }
+.edge { position: absolute; left: 0; top: 30%; bottom: 30%; width: 3px; border-radius: 3px; background: var(--accent); opacity: .7; }
+.hand { position: absolute; width: 14px; height: 18px; }
+.iconrail { width: 40px; margin: 6px 0 6px 6px; border-radius: 10px; background: var(--card); display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; flex: none; }
+.iconrail span { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 7px; }
+.iconrail span svg { width: 13px; height: 13px; color: var(--accent); }
+.note { font-size: 11px; color: var(--faint); }
+.caption-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.state { font-size: 10px; color: var(--dim); background: var(--card); border-radius: 6px; padding: 2px 7px; }
+
+/* Funções */
+.feat { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; }
+.fcard { background: var(--win); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+.fcard .top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.fcard h4 { margin: 0; font-size: 13.5px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
+.fcard h4 svg { width: 15px; height: 15px; color: var(--accent); }
+.fcard p { margin: 0; color: var(--dim); font-size: 12px; line-height: 1.5; }
+.pill { font-size: 10px; font-weight: 700; letter-spacing: .03em; border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+.pill.have { color: var(--ok); background: rgba(48,209,88,0.13); }
+.pill.new { color: var(--accent); background: var(--accent-soft); }
+.pill.part { color: #ffd60a; background: rgba(255,214,10,0.12); }
+code { font-family: var(--mono); font-size: .92em; background: var(--card); padding: 1px 5px; border-radius: 4px; }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M6 3h8l4 4v14H6z M14 3v4h4"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M9 3h6l-1 6 4 4H6l4-4zM12 13v8"/></symbol>
+    <symbol id="i-drive" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M3 13l3-8h12l3 8v5H3zM3 13h18M17 16h.01"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path fill="none" stroke="currentColor" stroke-width="2" d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.5" d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" d="M12 4v11m-5-5l5 5 5-5M5 20h14"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" d="M6 3h8l4 4v14H6zM9 12h6M9 16h6"/></symbol>
+    <symbol id="i-img" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path fill="none" stroke="currentColor" stroke-width="2" d="M3 17l5-5 4 4 3-3 6 6"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" d="M16 16l5 5"/></symbol>
+    <symbol id="i-palette" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" d="M12 3a9 9 0 1 0 0 18c1.5 0 2-1 2-2s-1-2 0-3 3 0 4-1 3-2 3-4c0-4-4-8-9-8z"/><circle cx="8" cy="11" r="1.3" fill="currentColor"/><circle cx="12" cy="7.5" r="1.3" fill="currentColor"/><circle cx="16" cy="10" r="1.3" fill="currentColor"/></symbol>
+    <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" d="M9 4v16"/></symbol>
+    <symbol id="i-motion" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" d="M3 12h4M5 7h5M5 17h5"/><circle cx="16" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-mouse" viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="6" fill="none" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" d="M12 7v3"/></symbol>
+    <symbol id="i-apps" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></g></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" d="M12 11v6M12 7h.01"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" d="M7 18a5 5 0 0 1-.5-10A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/></symbol>
+    <symbol id="i-git" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="12" r="2"/><path d="M6 7v10M6 12h10"/></g></symbol>
+    <symbol id="i-hash" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="2" d="M9 3L7 21M17 3l-2 18M4 9h17M3 15h17"/></symbol>
+    <symbol id="i-cmd" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" d="M12 2l10 10-10 10L2 12z"/></symbol>
+    <symbol id="i-wrench" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" d="M14 6a4 4 0 0 0 5 5l-9 9a2 2 0 0 1-3-3l9-9a4 4 0 0 1-2-2z"/></symbol>
+    <symbol id="i-tabs" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" d="M3 8h7l2-3h9v14H3z"/></symbol>
+    <symbol id="i-split" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" d="M12 4v16"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.3" fill="currentColor"/></symbol>
+    <symbol id="i-cols" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" d="M9 4v16M15 4v16"/></symbol>
+    <symbol id="i-zip" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" d="M6 3h12v18H6zM11 3v2h2v2h-2v2h2v2h-2v3"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-cursor" viewBox="0 0 14 18"><path d="M1 1l11 9-5 .5 3 6-2 1-3-6-4 3z" fill="white" stroke="black" stroke-width="1"/></symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header>
+    <h1>Folio: próximas telas</h1>
+    <p>Propostas para os pedidos novos, desenhadas no tema escuro do app. Escolha uma letra em cada seção (pode misturar, ex.: "Início A com os recentes da C"). Nada disso está no código ainda; os gestos do touchpad já saíram na Alpha 0.21.</p>
+  </header>
+
+  <!-- ───────────── INÍCIO ───────────── -->
+  <section>
+    <h2><span>1</span> Página Início</h2>
+    <p>Abre ao clicar em "Início" na barra lateral e pode virar a página de abertura das abas novas. Mostra pastas fixadas, discos com espaço livre e arquivos recentes (lidos do mesmo <code>recently-used.xbel</code> da busca rápida).</p>
+    <div class="opts">
+      <div class="opt">
+        <h3><b>A</b> Seções empilhadas</h3>
+        <p>Igual à referência: acesso rápido em blocos (com alfinete nas fixadas), discos com barra de uso e uma lista de recentes com o caminho. Cada seção recolhe pela setinha.</p>
+        <div class="frame"><div class="mini">
+          <div class="side">
+            <div class="si on"><svg><use href="#i-home"/></svg>Início</div>
+            <div class="label">Favoritos</div>
+            <div class="si"><svg><use href="#i-down"/></svg>Downloads</div>
+            <div class="si"><svg><use href="#i-doc"/></svg>Documentos</div>
+            <div class="si"><svg><use href="#i-img"/></svg>Imagens</div>
+            <div class="si"><svg><use href="#i-trash"/></svg>Lixeira</div>
+          </div>
+          <div class="main">
+            <h4>Início</h4>
+            <div>
+              <div class="sec-h"><svg><use href="#i-chev"/></svg>Acesso rápido</div>
+              <div class="qgrid">
+                <div class="qtile"><svg class="pin"><use href="#i-pin"/></svg><div class="fold"><svg><use href="#i-down"/></svg></div><div class="t">Downloads</div></div>
+                <div class="qtile"><svg class="pin"><use href="#i-pin"/></svg><div class="fold"><svg><use href="#i-doc"/></svg></div><div class="t">Documentos</div></div>
+                <div class="qtile"><svg class="pin"><use href="#i-pin"/></svg><div class="fold"><svg><use href="#i-folder"/></svg></div><div class="t">folio</div></div>
+                <div class="qtile"><div class="fold"><svg><use href="#i-folder"/></svg></div><div class="t">wallpapers</div></div>
+                <div class="qtile"><div class="fold"><svg><use href="#i-folder"/></svg></div><div class="t">dev</div></div>
+              </div>
+            </div>
+            <div>
+              <div class="sec-h"><svg><use href="#i-chev"/></svg>Discos</div>
+              <div class="drives">
+                <div class="drive"><svg><use href="#i-drive"/></svg><span class="n">Sistema (/)</span><div class="bar"><i style="width:64%"></i></div><span class="f num">171 GB livres de 476 GB</span></div>
+                <div class="drive"><svg><use href="#i-drive"/></svg><span class="n">Backup</span><div class="bar"><i style="width:22%"></i></div><span class="f num">728 GB livres de 931 GB</span></div>
+              </div>
+            </div>
+            <div>
+              <div class="sec-h"><svg><use href="#i-chev"/></svg>Arquivos recentes</div>
+              <div class="recent">
+                <div class="rrow"><span class="ftype" style="background:#e8833a">PNG</span><span class="nm">captura-folio.png</span><span class="p">~/Imagens/Capturas</span><span class="d">Hoje</span></div>
+                <div class="rrow"><span class="ftype" style="background:#d9463b">PDF</span><span class="nm">contrato-2026.pdf</span><span class="p">~/Documentos</span><span class="d">Ontem</span></div>
+                <div class="rrow"><span class="ftype" style="background:#3d8bff">QML</span><span class="nm">Main.qml</span><span class="p">~/…/folio/qml</span><span class="d">Ontem</span></div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+
+      <div class="opt">
+        <h3><b>B</b> Recentes primeiro, com miniaturas</h3>
+        <p>O que você mexeu por último em cima, como cartões com prévia. Pastas fixadas viram uma fileira de pílulas e os discos ficam numa linha só no rodapé.</p>
+        <div class="frame"><div class="mini">
+          <div class="side">
+            <div class="si on"><svg><use href="#i-home"/></svg>Início</div>
+            <div class="label">Favoritos</div>
+            <div class="si"><svg><use href="#i-down"/></svg>Downloads</div>
+            <div class="si"><svg><use href="#i-doc"/></svg>Documentos</div>
+            <div class="si"><svg><use href="#i-img"/></svg>Imagens</div>
+            <div class="si"><svg><use href="#i-trash"/></svg>Lixeira</div>
+          </div>
+          <div class="main">
+            <h4>Bom dia, justke</h4>
+            <div>
+              <div class="sec-h"><svg><use href="#i-clock"/></svg>Continuar de onde parou</div>
+              <div class="thumbs">
+                <div class="thumb" style="background:linear-gradient(135deg,#5b3f8f,#1e6fa8)"><span class="cap">wallpaper.jpg</span></div>
+                <div class="thumb" style="background:#f2f2f0"><span class="cap">contrato.pdf</span></div>
+                <div class="thumb" style="background:linear-gradient(160deg,#2b2b2e,#3d8bff55)"><span class="cap">captura.png</span></div>
+                <div class="thumb" style="background:#1d2a22"><span class="cap">notas.md</span></div>
+              </div>
+            </div>
+            <div>
+              <div class="sec-h"><svg><use href="#i-pin"/></svg>Fixadas</div>
+              <div class="chips">
+                <span class="chip"><svg><use href="#i-down"/></svg>Downloads</span>
+                <span class="chip"><svg><use href="#i-doc"/></svg>Documentos</span>
+                <span class="chip"><svg><use href="#i-folder"/></svg>folio</span>
+                <span class="chip"><svg><use href="#i-folder"/></svg>wallpapers</span>
+                <span class="chip"><svg><use href="#i-folder"/></svg>dev</span>
+              </div>
+            </div>
+            <div>
+              <div class="sec-h"><svg><use href="#i-clock"/></svg>Mais recentes</div>
+              <div class="recent">
+                <div class="rrow"><span class="ftype" style="background:#3d8bff">QML</span><span class="nm">Main.qml</span><span class="p">~/…/folio/qml</span><span class="d">14:02</span></div>
+                <div class="rrow"><span class="ftype" style="background:#30a46c">CSV</span><span class="nm">gastos-out.csv</span><span class="p">~/Documentos</span><span class="d">Ontem</span></div>
+              </div>
+            </div>
+            <div class="drives">
+              <div class="drive"><svg><use href="#i-drive"/></svg><span class="n">Sistema</span><div class="bar"><i style="width:64%"></i></div><span class="f num">171 GB livres</span></div>
+              <div class="drive"><svg><use href="#i-drive"/></svg><span class="n">Backup</span><div class="bar"><i style="width:22%"></i></div><span class="f num">728 GB livres</span></div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+
+      <div class="opt">
+        <h3><b>C</b> Duas colunas</h3>
+        <p>Lugares (fixadas + discos) à esquerda e uma linha do tempo de recentes à direita, agrupada por dia como a grade do Folio. Aproveita janelas largas.</p>
+        <div class="frame"><div class="mini">
+          <div class="side">
+            <div class="si on"><svg><use href="#i-home"/></svg>Início</div>
+            <div class="label">Favoritos</div>
+            <div class="si"><svg><use href="#i-down"/></svg>Downloads</div>
+            <div class="si"><svg><use href="#i-doc"/></svg>Documentos</div>
+            <div class="si"><svg><use href="#i-img"/></svg>Imagens</div>
+            <div class="si"><svg><use href="#i-trash"/></svg>Lixeira</div>
+          </div>
+          <div class="main">
+            <h4>Início</h4>
+            <div class="cols2">
+              <div class="panel-c">
+                <div class="label">Fixadas</div>
+                <div class="list-i"><svg class="ic"><use href="#i-down"/></svg><span class="grow">Downloads</span><span class="r num">48</span></div>
+                <div class="list-i"><svg class="ic"><use href="#i-doc"/></svg><span class="grow">Documentos</span><span class="r num">112</span></div>
+                <div class="list-i"><svg class="ic"><use href="#i-folder"/></svg><span class="grow">folio</span><span class="r num">14</span></div>
+                <div class="list-i"><svg class="ic"><use href="#i-folder"/></svg><span class="grow">wallpapers</span><span class="r num">230</span></div>
+                <div class="label" style="margin-top:10px">Discos</div>
+                <div class="list-i"><svg class="ic dim"><use href="#i-drive"/></svg><span class="grow">Sistema</span><span class="r num">36% livre</span></div>
+                <div class="bar"><i style="width:64%"></i></div>
+                <div class="list-i"><svg class="ic dim"><use href="#i-drive"/></svg><span class="grow">Backup</span><span class="r num">78% livre</span></div>
+                <div class="bar"><i style="width:22%"></i></div>
+              </div>
+              <div class="panel-c">
+                <div class="label">Recentes</div>
+                <div class="daygrp">Hoje</div>
+                <div class="list-i"><span class="ftype" style="background:#3d8bff">QML</span><span class="grow">Main.qml</span><span class="r">14:02</span></div>
+                <div class="list-i"><span class="ftype" style="background:#e8833a">PNG</span><span class="grow">captura-folio.png</span><span class="r">11:40</span></div>
+                <div class="daygrp">Ontem</div>
+                <div class="list-i"><span class="ftype" style="background:#d9463b">PDF</span><span class="grow">contrato-2026.pdf</span><span class="r">18:15</span></div>
+                <div class="list-i"><span class="ftype" style="background:#30a46c">CSV</span><span class="grow">gastos-out.csv</span><span class="r">09:03</span></div>
+                <div class="daygrp">Últimos 7 dias</div>
+                <div class="list-i"><span class="ftype" style="background:#8e8e93">TXT</span><span class="grow">ideias.txt</span><span class="r">seg</span></div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────── CONFIGURAÇÕES ───────────── -->
+  <section>
+    <h2><span>2</span> Configurações em abas</h2>
+    <p>Hoje é uma página longa. As seções viram abas: Aparência, Barra lateral e janela, Animações, Comportamento, Gestos e atalhos, Aplicativos padrão e Sobre. A busca no topo filtra as opções de todas as abas.</p>
+    <div class="opts">
+      <div class="opt">
+        <h3><b>A</b> Lista à esquerda (como a referência)</h3>
+        <p>Busca no topo, abas em lista com ícone e nome, e o conteúdo da aba ao lado. O tema vira cartões com prévia.</p>
+        <div class="frame"><div class="cfg">
+          <div class="cfg-nav">
+            <div class="search"><svg><use href="#i-search"/></svg>Buscar configuração</div>
+            <div class="nv on"><svg><use href="#i-palette"/></svg>Aparência</div>
+            <div class="nv"><svg><use href="#i-layout"/></svg>Barra lateral e janela</div>
+            <div class="nv"><svg><use href="#i-motion"/></svg>Animações</div>
+            <div class="nv"><svg><use href="#i-mouse"/></svg>Comportamento</div>
+            <div class="nv"><svg><use href="#i-key"/></svg>Gestos e atalhos</div>
+            <div class="nv"><svg><use href="#i-apps"/></svg>Aplicativos padrão</div>
+            <div class="nv"><svg><use href="#i-info"/></svg>Sobre</div>
+          </div>
+          <div class="cfg-body">
+            <h5><svg><use href="#i-palette"/></svg>Aparência</h5>
+            <div class="sub">Tema, cores, ícones e fonte</div>
+            <div class="themes">
+              <div class="theme on"><div class="pv" style="background:#1c1c1e"><b style="background:#2c2c2e"></b><u style="background:#3d8bff55"></u></div><span class="t">Escuro</span></div>
+              <div class="theme"><div class="pv" style="background:#f2f2f4"><b style="background:#e0e0e4"></b><u style="background:#3d8bff44"></u></div><span class="t">Claro</span></div>
+              <div class="theme"><div class="pv" style="background:linear-gradient(90deg,#1c1c1e 50%,#f2f2f4 50%)"><b style="background:#2c2c2e"></b><u style="background:#e0e0e4"></u></div><span class="t">Automático</span></div>
+            </div>
+            <div class="line"><div class="k">Cor de destaque</div><div class="swatches"><i style="background:#3d8bff"></i><i style="background:#bf5af2"></i><i style="background:#ff375f"></i><i style="background:#ff9f0a"></i><i style="background:#30d158"></i></div></div>
+            <div class="line"><div class="k">Ícones dos arquivos</div><div class="seg"><i class="on">Duotone</i><i>macOS</i><i>Plano</i></div></div>
+            <div class="line"><div class="k">Melhorar legibilidade<span class="h">Fundo sólido atrás do texto</span></div><span class="tg"></span></div>
+          </div>
+        </div></div>
+      </div>
+
+      <div class="opt">
+        <h3><b>B</b> Abas no topo</h3>
+        <p>Uma fileira de abas em pílula acima do conteúdo. Ocupa a largura toda para as opções; em janela estreita a fileira rola para o lado.</p>
+        <div class="frame" style="display:flex;flex-direction:column;gap:10px;min-height:396px">
+          <div class="search" style="margin:0"><svg><use href="#i-search"/></svg>Buscar configuração (ex.: tema, gesto, terminal)</div>
+          <div class="tabs-top">
+            <i><svg><use href="#i-palette"/></svg>Aparência</i>
+            <i><svg><use href="#i-layout"/></svg>Janela</i>
+            <i><svg><use href="#i-motion"/></svg>Animações</i>
+            <i class="on"><svg><use href="#i-mouse"/></svg>Comportamento</i>
+            <i><svg><use href="#i-key"/></svg>Atalhos</i>
+            <i><svg><use href="#i-apps"/></svg>Apps</i>
+          </div>
+          <div class="cfg-body">
+            <h5><svg><use href="#i-mouse"/></svg>Comportamento</h5>
+            <div class="line"><div class="k">Abrir com um clique</div><span class="tg off"></span></div>
+            <div class="line"><div class="k">Janela única<span class="h">Abrir de novo usa a janela aberta, numa aba nova</span></div><span class="tg off"></span></div>
+            <div class="line"><div class="k">Confirmar antes de excluir permanentemente</div><span class="tg"></span></div>
+            <div class="line"><div class="k">Terminal<span class="h">Vazio = detectar automaticamente</span></div><span class="seg"><i class="on">kitty</i></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="opt">
+        <h3><b>C</b> Trilho de ícones</h3>
+        <p>Só os ícones numa coluna estreita (o nome aparece ao passar o mouse). Sobra mais espaço para as opções, mas é preciso conhecer os ícones.</p>
+        <div class="frame"><div class="rail">
+          <div class="rail-nav">
+            <span><svg><use href="#i-palette"/></svg></span>
+            <span><svg><use href="#i-layout"/></svg></span>
+            <span><svg><use href="#i-motion"/></svg></span>
+            <span><svg><use href="#i-mouse"/></svg></span>
+            <span class="on"><svg><use href="#i-key"/></svg></span>
+            <span><svg><use href="#i-apps"/></svg></span>
+            <span><svg><use href="#i-info"/></svg></span>
+          </div>
+          <div class="cfg-body">
+            <h5><svg><use href="#i-key"/></svg>Gestos e atalhos</h5>
+            <div class="line"><div class="k">Gestos do touchpad<span class="h">Dois dedos para a direita volta</span></div><span class="tg"></span></div>
+            <div class="line"><div class="k">Inverter direção do gesto</div><span class="tg off"></span></div>
+            <div class="line"><div class="k">Voltar</div><span class="seg"><i class="on">Alt+←</i></span></div>
+            <div class="line"><div class="k">Painel de prévia</div><span class="seg"><i class="on">F3</i></span></div>
+            <div class="line"><div class="k">Busca rápida</div><span class="seg"><i class="on">Ctrl+P</i></span></div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────── ARRASTAR ───────────── -->
+  <section>
+    <h2><span>3</span> Contador ao arrastar vários itens</h2>
+    <p>O que segue o cursor quando você arrasta mais de um item. Todos usam o ícone do primeiro item; o número só aparece com 2 ou mais.</p>
+    <div class="opts">
+      <div class="opt">
+        <h3><b>A</b> Número discreto no canto</h3>
+        <p>Do jeito que você descreveu: o ícone da pasta e um "2" pequeno no canto de baixo, sem cor forte.</p>
+        <div class="frame"><div class="dragstage">
+          <div class="bg"><div><div class="fold"><svg><use href="#i-folder"/></svg></div>fotos</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>dev</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>música</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>docs</div></div>
+          <div class="ghost"><div class="gtile"><svg><use href="#i-folder"/></svg><span class="badge-c">2</span></div></div>
+          <svg class="cursor"><use href="#i-cursor"/></svg>
+          <div class="dropto">2 pastas</div>
+        </div></div>
+      </div>
+      <div class="opt">
+        <h3><b>B</b> Bolinha na cor de destaque</h3>
+        <p>Estilo macOS: o número numa bolinha azul no canto de cima. Mais visível, chama mais atenção.</p>
+        <div class="frame"><div class="dragstage">
+          <div class="bg"><div><div class="fold"><svg><use href="#i-folder"/></svg></div>fotos</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>dev</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>música</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>docs</div></div>
+          <div class="ghost"><div class="gtile"><svg><use href="#i-folder"/></svg><span class="badge-a">2</span></div></div>
+          <svg class="cursor"><use href="#i-cursor"/></svg>
+        </div></div>
+      </div>
+      <div class="opt">
+        <h3><b>C</b> Pilha + número discreto</h3>
+        <p>Os ícones empilhados (até 3) mostram que são vários, com o número discreto da opção A. Itens de tipos diferentes aparecem cada um com o seu ícone na pilha.</p>
+        <div class="frame"><div class="dragstage">
+          <div class="bg"><div><div class="fold"><svg><use href="#i-folder"/></svg></div>fotos</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>dev</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>música</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>docs</div></div>
+          <div class="ghost"><div class="stack"><div class="gtile file"><svg><use href="#i-file"/></svg></div><div class="gtile"><svg><use href="#i-folder"/></svg></div><div class="gtile"><svg><use href="#i-folder"/></svg><span class="badge-c">3</span></div></div></div>
+          <svg class="cursor" style="left:calc(50% + 24px)"><use href="#i-cursor"/></svg>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────── BARRA LATERAL ───────────── -->
+  <section>
+    <h2><span>4</span> Barra lateral automática</h2>
+    <p>O modo "Auto" de hoje só troca entre cheia, ícones e oculta pela largura da janela. Estas são formas de ela sumir e voltar sozinha. Entram como opção nova em "Barra lateral"; o "Auto" atual continua lá.</p>
+    <div class="opts two">
+      <div class="opt">
+        <h3><b>A</b> Some e aparece pela borda</h3>
+        <p>Fica oculta e os arquivos usam a janela toda. Encostar o cursor na borda esquerda (ou deslizar no touchpad a partir da borda) faz ela aparecer flutuando por cima; sai quando o cursor vai embora. Arrastar um arquivo até a borda também abre, para soltar numa pasta.</p>
+        <div class="frame">
+          <div class="caption-row" style="margin-bottom:6px"><span class="state">em repouso</span></div>
+          <div class="sbstage" style="height:120px">
+            <div class="edge"></div>
+            <div class="content"><div><div class="fold"><svg><use href="#i-folder"/></svg></div>fotos</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>dev</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>música</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>docs</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>jogos</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>notas</div></div>
+          </div>
+          <div class="caption-row" style="margin:10px 0 6px"><span class="state">cursor na borda</span></div>
+          <div class="sbstage" style="height:200px">
+            <div class="content" style="opacity:.5"><div><div class="fold"><svg><use href="#i-folder"/></svg></div>fotos</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>dev</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>música</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>docs</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>jogos</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>notas</div></div>
+            <div class="over">
+              <div class="si on"><svg><use href="#i-home"/></svg>Início</div>
+              <div class="si"><svg><use href="#i-down"/></svg>Downloads</div>
+              <div class="si"><svg><use href="#i-doc"/></svg>Documentos</div>
+              <div class="si"><svg><use href="#i-img"/></svg>Imagens</div>
+              <div class="si"><svg><use href="#i-trash"/></svg>Lixeira</div>
+            </div>
+            <svg class="hand" style="left:4px;top:60px"><use href="#i-cursor"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="opt">
+        <h3><b>B</b> Ícones que se expandem</h3>
+        <p>Fica sempre como trilho de ícones (ocupa pouco). Passar o mouse por ele abre a barra cheia por cima dos arquivos, com os nomes; ao sair, volta a ser só ícones.</p>
+        <div class="frame">
+          <div class="caption-row" style="margin-bottom:6px"><span class="state">em repouso</span></div>
+          <div class="sbstage" style="height:120px">
+            <div class="iconrail"><span><svg><use href="#i-home"/></svg></span><span><svg><use href="#i-down"/></svg></span><span><svg><use href="#i-doc"/></svg></span></div>
+            <div class="content"><div><div class="fold"><svg><use href="#i-folder"/></svg></div>fotos</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>dev</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>música</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>docs</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>jogos</div></div>
+          </div>
+          <div class="caption-row" style="margin:10px 0 6px"><span class="state">mouse sobre os ícones</span></div>
+          <div class="sbstage" style="height:200px">
+            <div class="iconrail" style="visibility:hidden"></div>
+            <div class="content" style="opacity:.5"><div><div class="fold"><svg><use href="#i-folder"/></svg></div>fotos</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>dev</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>música</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>docs</div><div><div class="fold"><svg><use href="#i-folder"/></svg></div>jogos</div></div>
+            <div class="over">
+              <div class="si on"><svg><use href="#i-home"/></svg>Início</div>
+              <div class="si"><svg><use href="#i-down"/></svg>Downloads</div>
+              <div class="si"><svg><use href="#i-doc"/></svg>Documentos</div>
+              <div class="si"><svg><use href="#i-img"/></svg>Imagens</div>
+              <div class="si"><svg><use href="#i-trash"/></svg>Lixeira</div>
+            </div>
+            <svg class="hand" style="left:30px;top:70px"><use href="#i-cursor"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────── FUNÇÕES ───────────── -->
+  <section>
+    <h2><span>5</span> Funções da lista do Files</h2>
+    <p>Comparando com o que o Folio já tem. As marcadas "Nova" ainda não existem; diga a ordem em que quer.</p>
+    <div class="feat">
+      <div class="fcard"><div class="top"><h4><svg><use href="#i-tabs"/></svg>Abas</h4><span class="pill have">Já tem</span></div><p>Abas restauradas, arrastar para reordenar, menu de contexto.</p></div>
+      <div class="fcard"><div class="top"><h4><svg><use href="#i-split"/></svg>Painel duplo</h4><span class="pill have">Já tem</span></div><p>Ctrl+\ ou F6, divisor arrastável.</p></div>
+      <div class="fcard"><div class="top"><h4><svg><use href="#i-tag"/></svg>Etiquetas</h4><span class="pill have">Já tem</span></div><p>Cores em <code>user.xdg.tags</code>, busca por <code>tag:</code>.</p></div>
+      <div class="fcard"><div class="top"><h4><svg><use href="#i-cols"/></svg>Vista em colunas</h4><span class="pill have">Já tem</span></div><p>Ctrl+3.</p></div>
+      <div class="fcard"><div class="top"><h4><svg><use href="#i-zip"/></svg>Compactados</h4><span class="pill part">Parcial</span></div><p>Entra e extrai zip, tar, 7z. Falta RAR e criar .7z.</p></div>
+      <div class="fcard"><div class="top"><h4><svg><use href="#i-eye"/></svg>Prévia e Visualização Rápida</h4><span class="pill have">Já tem</span></div><p>F3 e Espaço, com vídeo e áudio.</p></div>
+      <div class="fcard"><div class="top"><h4><svg><use href="#i-cloud"/></svg>Nuvem</h4><span class="pill new">Nova</span></div><p>Google Drive e OneDrive na barra lateral, via contas do GNOME (gvfs) ou <code>rclone mount</code>.</p></div>
+      <div class="fcard"><div class="top"><h4><svg><use href="#i-git"/></svg>Integração Git</h4><span class="pill new">Nova</span></div><p>Branch atual no caminho, arquivos modificados marcados, trocar de branch, pull/push.</p></div>
+      <div class="fcard"><div class="top"><h4><svg><use href="#i-hash"/></svg>Hashes</h4><span class="pill new">Nova</span></div><p>MD5, SHA-1 e SHA-256 nas Propriedades, com campo para colar e comparar.</p></div>
+      <div class="fcard"><div class="top"><h4><svg><use href="#i-cmd"/></svg>Paleta de comandos</h4><span class="pill new">Nova</span></div><p>Ctrl+Shift+P: procurar e rodar qualquer ação ou configuração pelo nome.</p></div>
+      <div class="fcard"><div class="top"><h4><svg><use href="#i-key"/></svg>Reatribuir teclas</h4><span class="pill new">Nova</span></div><p>Aba "Atalhos" nas Configurações: clicar no atalho e apertar a tecla nova.</p></div>
+      <div class="fcard"><div class="top"><h4><svg><use href="#i-wrench"/></svg>Barra de ferramentas</h4><span class="pill new">Nova</span></div><p>Escolher e reordenar os botões do topo.</p></div>
+    </div>
+  </section>
+</div>

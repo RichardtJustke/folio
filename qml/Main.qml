@@ -550,10 +550,11 @@ Window {
                                    || confirmDialog.opened || conflictDialog.opened || promptDialog.opened
                                    || propertiesDialog.opened || openWithDialog.opened || connectDialog.opened || settingsOpen
     readonly property bool ready: fm !== null && !typing
+    readonly property bool writable: ready && !fm.isTrash && !fm.path.startsWith("folio:") // pasta de verdade (colar, criar)
 
     Shortcut { sequences: [StandardKey.Copy]; enabled: win.ready; onActivated: fileOps.copy(fm.selectedPaths()) }
     Shortcut { sequences: [StandardKey.Cut]; enabled: win.ready && !fm.isTrash; onActivated: fileOps.cut(fm.selectedPaths()) }
-    Shortcut { sequences: [StandardKey.Paste]; enabled: win.ready && !fm.isTrash; onActivated: fileOps.paste(fm.path) }
+    Shortcut { sequences: [StandardKey.Paste]; enabled: win.writable; onActivated: fileOps.paste(fm.path) }
     Shortcut { sequences: ["Shift+F10", "Menu"]; enabled: win.ready && fm.selectedCount > 0; onActivated: tab.view.openItemMenu() }
     Shortcut { sequences: [StandardKey.Undo]; enabled: win.ready; onActivated: fileOps.undo() }
     Shortcut { sequence: "Delete"; enabled: win.ready; onActivated: win.requestDelete(fm.selectedPaths(), false) }
@@ -572,7 +573,7 @@ Window {
     Shortcut { sequence: "Ctrl+H"; enabled: win.ready; onActivated: fm.showHidden = !fm.showHidden }
     Shortcut { sequence: "Ctrl+E"; enabled: win.ready; onActivated: fm.showExtensions = !fm.showExtensions }
     Shortcut { sequences: [StandardKey.SelectAll]; enabled: win.ready; onActivated: fm.selectAll() }
-    Shortcut { sequence: "Ctrl+Shift+N"; enabled: win.ready && !fm.isTrash; onActivated: tab.newFolder() }
+    Shortcut { sequence: "Ctrl+Shift+N"; enabled: win.writable; onActivated: tab.newFolder() }
     Shortcut { sequences: ["F5", "Ctrl+R"]; enabled: win.ready; onActivated: fm.reload() }
     Shortcut { sequences: [StandardKey.Find]; enabled: fm !== null; onActivated: if (header.search) header.search.focusField() }
     Shortcut { sequences: ["Ctrl+L"]; enabled: fm !== null; onActivated: if (header.item) header.item.pathBar.edit() }
@@ -583,13 +584,13 @@ Window {
     Shortcut { sequences: ["Alt+Return", "Ctrl+I"]; enabled: win.ready; onActivated: win.showProperties(fm.selectedPaths().length ? fm.selectedPaths() : [fm.path]) }
     Shortcut { sequence: "Ctrl+Shift+I"; enabled: win.ready; onActivated: fm.invertSelection() }
     Shortcut { sequence: "Ctrl+S"; enabled: win.ready; onActivated: win.promptSelectPattern() }
-    Shortcut { sequence: "Ctrl+D"; enabled: win.ready && !fm.isTrash; onActivated: placesModel.addFavorite(fm.path) }
+    Shortcut { sequence: "Ctrl+D"; enabled: win.writable; onActivated: placesModel.addFavorite(fm.path) }
     Shortcut { sequence: "Ctrl+N"; onActivated: fileOps.openNewWindow(fm ? fm.path : fileOps.startPath()) }
     Shortcut { sequence: "Ctrl+Shift+C"; enabled: win.ready; onActivated: fileOps.copyText(fm.selectedPaths().length ? fm.selectedPaths().join("\n") : fm.path) }
     Shortcut { sequences: ["Ctrl+=", "Ctrl++"]; onActivated: win.zoom(8) }
     Shortcut { sequence: "Ctrl+-"; onActivated: win.zoom(-8) }
     Shortcut { sequence: "Ctrl+0"; onActivated: Settings.iconSize = 76 }
-    Shortcut { sequence: "Ctrl+Alt+N"; enabled: win.ready && !fm.isTrash; onActivated: tab.newFile() }
+    Shortcut { sequence: "Ctrl+Alt+N"; enabled: win.writable; onActivated: tab.newFile() }
     Shortcut { sequence: "Ctrl+1"; enabled: win.ready; onActivated: fm.viewMode = "grid" }
     Shortcut { sequence: "Ctrl+2"; enabled: win.ready; onActivated: fm.viewMode = "list" }
     Shortcut { sequence: "Ctrl+3"; enabled: win.ready; onActivated: fm.viewMode = "column" }

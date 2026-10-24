@@ -74,9 +74,21 @@ Item {
     }
     onIndexChanged: titleUpdated(index, fm.title)
 
+    readonly property bool home: fm.path === "folio:home"
+
+    HomePage {
+        anchors.fill: parent
+        visible: root.home
+        places: root.places
+        ops: root.ops
+        onNavigate: path => nav.go(path)
+        onReveal: path => root.reveal(path)
+    }
+
     FileGrid {
         id: grid
         anchors.fill: parent
+        visible: !root.home
         fileModel: fm
         ops: root.ops
         places: root.places

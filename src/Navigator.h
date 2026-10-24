@@ -21,7 +21,7 @@ public:
     QString currentPath() const { return m_current; }
     bool canGoBack() const { return !m_back.isEmpty(); }
     bool canGoForward() const { return !m_forward.isEmpty(); }
-    bool canGoUp() const { return m_current != "/"; }
+    bool canGoUp() const { return m_current != "/" && !m_current.startsWith(QLatin1String("folio:")); }
     // pasta de onde viemos (para re-selecioná-la ao voltar/subir)
     QString lastLeft() const { return m_lastLeft; }
 

@@ -12,14 +12,15 @@ void Navigator::reset(const QString &path)
     m_back.clear();
     m_forward.clear();
     m_lastLeft.clear();
-    m_current = QDir::cleanPath(Config::expand(path));
+    m_current = path.startsWith(QLatin1String("folio:")) ? path : QDir::cleanPath(Config::expand(path));
     emit currentPathChanged();
 }
 
 void Navigator::go(const QString &path)
 {
-    const auto p = QDir::cleanPath(Config::expand(path));
-    if (p == m_current || !QFileInfo(p).isDir())
+    const bool virt = path.startsWith(QLatin1String("folio:"));
+    const auto p = virt ? path : QDir::cleanPath(Config::expand(path));
+    if (p == m_current || (!virt && !QFileInfo(p).isDir()))
         return;
     m_back.append(m_current);
     m_forward.clear();

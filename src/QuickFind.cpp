@@ -10,6 +10,7 @@
 #include <QFileInfo>
 #include <QFutureWatcher>
 #include <QMimeDatabase>
+#include <QStandardPaths>
 #include <QUrl>
 #include <QXmlStreamReader>
 #include <QtConcurrent>
@@ -33,9 +34,9 @@ QVariantMap describe(const QFileInfo &fi)
 }
 
 // recentes do freedesktop, mais novos primeiro, só os que ainda existem
-QStringList recentFiles()
+QList<QPair<QDateTime, QString>> recentBookmarks(int limit)
 {
-    QFile f(QDir::homePath() + "/.local/share/recently-used.xbel");
+    QFile f(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "/recently-used.xbel");
     if (!f.open(QIODevice::ReadOnly))
         return {};
     QList<QPair<QDateTime, QString>> items;
@@ -50,13 +51,24 @@ QStringList recentFiles()
                           url.toLocalFile()});
     }
     std::sort(items.begin(), items.end(), [](const auto &a, const auto &b) { return a.first > b.first; });
-    QStringList out;
-    for (const auto &[when, path] : items) {
-        if (!out.contains(path) && QFileInfo::exists(path))
-            out.append(path);
-        if (out.size() >= 200)
+    QList<QPair<QDateTime, QString>> out;
+    QSet<QString> seen;
+    for (const auto &item : std::as_const(items)) {
+        if (seen.contains(item.second) || !QFileInfo::exists(item.second))
+            continue;
+        seen.insert(item.second);
+        out.append(item);
+        if (out.size() >= limit)
             break;
     }
+    return out;
+}
+
+QStringList recentFiles()
+{
+    QStringList out;
+    for (const auto &item : recentBookmarks(200))
+        out.append(item.second);
     return out;
 }
 
@@ -138,4 +150,15 @@ void QuickFind::search(const QString &query)
         emit searchingChanged();
     });
     watcher->setFuture(QtConcurrent::run(run, query, m_cancel));
+}
+
+QVariantList QuickFind::recent(int limit)
+{
+    QVariantList out;
+    for (const auto &[when, path] : recentBookmarks(limit)) {
+        auto item = describe(QFileInfo(path));
+        item.insert("used", when.toLocalTime());
+        out.append(item);
+    }
+    return out;
 }

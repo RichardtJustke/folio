@@ -38,6 +38,8 @@ public:
     Q_INVOKABLE void addSmartFolder(const QString &name, const QString &query, const QString &icon);
     Q_INVOKABLE void removeSmartFolder(const QString &query);
     Q_INVOKABLE QVariantList smartFolders() const;
+    Q_INVOKABLE QVariantList quickAccess() const; // pastas fixadas: [{name, path, glyph, removable}]
+    Q_INVOKABLE QVariantList drives() const; // [{name, path, icon, free, total}] — sistema + volumes do usuário
 
 signals:
     void errorOccurred(const QString &message);

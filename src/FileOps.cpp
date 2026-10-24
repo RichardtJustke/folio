@@ -213,6 +213,8 @@ QString FileOps::startPath() const
     const auto args = QCoreApplication::arguments();
     if (args.size() > 1) {
         const auto arg = args.at(1);
+        if (arg.startsWith(QLatin1String("folio:"))) // páginas do próprio Folio (folio:home, folio:recent)
+            return arg;
         QFileInfo fi(arg.startsWith("file://") ? QUrl(arg).toLocalFile() : Config::expand(arg));
         if (fi.isDir())
             return fi.absoluteFilePath();

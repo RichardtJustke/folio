@@ -91,7 +91,7 @@ Rectangle {
         section.delegate: Item {
             required property string section
             width: ListView.view.width
-            height: root.compact ? 16 : 30
+            height: section === "" ? 0 : root.compact ? 16 : 30
             clip: true
             Text {
                 visible: !root.compact

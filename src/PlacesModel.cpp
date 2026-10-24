@@ -83,7 +83,10 @@ QHash<int, QByteArray> PlacesModel::roleNames() const
 void PlacesModel::refresh()
 {
     beginResetModel();
-    m_places = loadStandard() + loadFavorites() + loadVolumes();
+    // "Início" (a página com acesso rápido, discos e recentes) fica acima de tudo, sem título de grupo
+    m_places = QList<Place>{{QStringLiteral("Início"), QStringLiteral("folio:home"), QStringLiteral("user-home-symbolic"),
+                             {}, {}, {}, {}, false, false}}
+             + loadStandard() + loadFavorites() + loadVolumes();
     endResetModel();
 }
 
@@ -139,7 +142,7 @@ QList<PlacesModel::Place> PlacesModel::loadVolumes() const
     out.append({QStringLiteral("Lixeira"), trash, "user-trash-symbolic", fav, {}, {}, {}, false, false});
     out.append({QStringLiteral("Recentes"), "folio:recent", "document-open-recent-symbolic", fav, {}, {}, {}, false, false});
 
-    out.append({QStringLiteral("Início"), QDir::homePath(), "user-home-symbolic", group, {}, formatFreeSpace(QDir::homePath()), {}, false, false});
+    out.append({QStringLiteral("Pasta pessoal"), QDir::homePath(), "user-home-symbolic", group, {}, formatFreeSpace(QDir::homePath()), {}, false, false});
     out.append({QStringLiteral("Computador"), "/", "computer-symbolic,drive-harddisk-symbolic", group, {}, formatFreeSpace("/"), {}, false, false});
 
     for (const auto &v : QStorageInfo::mountedVolumes()) {
@@ -305,4 +308,39 @@ void PlacesModel::removeSmartFolder(const QString &query)
     cfg.insert("smartFolders", arr);
     Config::save(cfg);
     refresh();
+}
+
+QVariantList PlacesModel::drives() const
+{
+    QVariantList out;
+    const auto add = [&](const QString &name, const QString &path, const QString &icon) {
+        const QStorageInfo si(path);
+        if (!si.isValid() || !si.isReady() || si.bytesTotal() <= 0)
+            return;
+        out.append(QVariantMap{{"name", name}, {"path", path}, {"icon", icon},
+                               {"free", si.bytesAvailable()}, {"total", si.bytesTotal()}});
+    };
+    add(QStringLiteral("Sistema"), QStringLiteral("/"), QStringLiteral("drive-harddisk-symbolic"));
+    // /home em partição própria também conta
+    if (QStorageInfo(QDir::homePath()).rootPath() != QStorageInfo(QStringLiteral("/")).rootPath())
+        add(QStringLiteral("Pasta pessoal"), QDir::homePath(), QStringLiteral("user-home-symbolic"));
+    for (const auto &p : m_places) {
+        if (p.type == QLatin1String("volume") || (!p.device.isEmpty() && p.group == QLatin1String("Locais")))
+            add(p.name, p.path, p.icon);
+    }
+    return out;
+}
+
+QVariantList PlacesModel::quickAccess() const
+{
+    QVariantList out;
+    const auto trash = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "/Trash/files";
+    for (const auto &p : m_places) {
+        if (p.group != QLatin1String("Favoritos") || p.path == trash || p.path.startsWith(QLatin1String("folio:")))
+            continue;
+        // pastas XDG levam o símbolo delas; favoritos do usuário são pastas comuns
+        out.append(QVariantMap{{"name", p.name}, {"path", p.path},
+                               {"glyph", p.favorite ? QString() : p.icon}, {"removable", p.favorite}});
+    }
+    return out;
 }

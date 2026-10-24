@@ -2,6 +2,14 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.22
+- Página **Início** (primeiro item da barra lateral): Acesso rápido com as pastas fixadas e as pastas que você usou por último (o alfinete fixa ou desafixa), Discos com barra de uso e espaço livre, e Arquivos recentes com a pasta e quando foram abertos. Cada seção recolhe pela setinha; clique direito abre "Mostrar na Pasta", "Copiar Caminho"…
+- Soltar arquivos num bloco do Acesso rápido copia para aquela pasta.
+- A pasta pessoal aparece em "Locais" como "Pasta pessoal".
+- `folio folio:home` abre direto no Início.
+- Correção: "Recentes" na barra lateral não abria.
+- `docs/mockups-inicio-config.html`: as propostas de Início, Configurações em abas, contador ao arrastar e barra lateral automática.
+
 ## Alpha 0.21
 - Gestos do touchpad: deslizar dois dedos para a direita volta, para a esquerda avança, como nos navegadores. Uma bolinha com a seta entra pela borda enquanto os dedos deslizam e fica na cor de destaque quando soltar já vai navegar. A rolagem vertical continua igual, e a vista em colunas segue rolando para o lado.
 - Configurações → Comportamento: "Gestos do touchpad" (ligado por padrão) e "Inverter direção do gesto".

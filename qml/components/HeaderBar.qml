@@ -74,7 +74,7 @@ Item {
         anchors { left: nav.right; leftMargin: 12; right: tools.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
         path: root.fileModel.path
         title: root.fileModel.title
-        special: root.fileModel.isTrash || root.fileModel.isSearch
+        special: root.fileModel.isTrash || root.fileModel.isSearch || root.fileModel.path.startsWith("folio:")
         ops: root.ops
         onNavigate: p => root.navigator.go(p)
         onSubmitted: typed => root.openPath(typed)
@@ -190,7 +190,7 @@ Item {
             checked: root.fileModel.showHidden
             onActivated: root.fileModel.showHidden = !root.fileModel.showHidden
         }
-        ToolButton { icon: "folder-new-symbolic"; visible: !root.narrow && !root.fileModel.isTrash; onActivated: root.newFolder() }
+        ToolButton { icon: "folder-new-symbolic"; visible: !root.narrow && !root.fileModel.isTrash && !root.fileModel.path.startsWith("folio:"); onActivated: root.newFolder() }
         ToolButton { // painel de prévia (F3)
             visible: !root.narrow
             icon: "view-dual-symbolic,view-sidebar-symbolic"

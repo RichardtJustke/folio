@@ -367,7 +367,7 @@ void FileModel::persist(const QString &key, const QJsonValue &value)
 
 void FileModel::setPath(const QString &path)
 {
-    const auto clean = QDir::cleanPath(path);
+    const auto clean = path.startsWith(QLatin1String("folio:")) ? path : QDir::cleanPath(path);
     if (clean == m_path)
         return;
     if (!m_watcher.directories().isEmpty())
@@ -398,6 +398,8 @@ QString FileModel::title() const
         return QFileInfo(m_path.section("::", 0, 0)).fileName() + " (arquivo compactado)";
     if (m_path == "folio:recent")
         return QStringLiteral("Recentes");
+    if (m_path == "folio:home")
+        return QStringLiteral("Início");
     if (m_path == "/")
         return QStringLiteral("Computador");
     if (m_path == QDir::homePath())
@@ -536,6 +538,8 @@ void FileModel::reload()
         watcher->setFuture(QtConcurrent::run(searchTree, m_path, m_query, m_showHidden, m_cancel));
     else if (m_path == "folio:recent")
         watcher->setFuture(QtConcurrent::run(listRecent));
+    else if (m_path == "folio:home") // a página Início não lista arquivos
+        watcher->setFuture(QtConcurrent::run([] { return Listing{}; }));
     else if (m_path.startsWith("folio:smart:"))
         watcher->setFuture(QtConcurrent::run(listSmart, m_path.mid(12)));
     else if (m_path.contains("::"))

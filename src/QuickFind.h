@@ -26,6 +26,8 @@ public:
 
     Q_INVOKABLE void search(const QString &query);
     Q_INVOKABLE void cancel();
+    // recentes do recently-used.xbel, mais novos primeiro: [{path, name, location, isDir, icon, used}]
+    Q_INVOKABLE static QVariantList recent(int limit = 12);
 
 signals:
     void resultsChanged();
