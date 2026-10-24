@@ -52,7 +52,7 @@ void runSnapshot(QQmlApplicationEngine &engine)
                 return sendSwipe(win, key == "swipe-right");
             const auto combo = QKeySequence(QString(key).replace("comma", ","))[0];
             const auto text = combo.keyboardModifiers() & ~Qt::ShiftModifier ? QString()
-                            : key.size() == 1 ? key : QString();
+                            : key.size() == 1 ? key : key.compare("space", Qt::CaseInsensitive) == 0 ? QStringLiteral(" ") : QString();
             QKeyEvent press(QEvent::KeyPress, combo.key(), combo.keyboardModifiers(), text);
             QKeyEvent release(QEvent::KeyRelease, combo.key(), combo.keyboardModifiers(), text);
             QGuiApplication::sendEvent(win, &press);

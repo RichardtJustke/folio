@@ -23,6 +23,7 @@ Item {
     signal openPath(string path)
     signal topClicked
 
+    signal customizeToolbar
     signal newFolder
     signal emptyTrash
     signal focusView
@@ -33,11 +34,20 @@ Item {
     MouseArea {
         property point pressPos
         anchors.fill: parent
-        onPressed: e => { pressPos = Qt.point(e.x, e.y); root.topClicked() }
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        onPressed: e => {
+            if (e.button === Qt.RightButton) { customizeMenu.popup(); return }
+            pressPos = Qt.point(e.x, e.y); root.topClicked()
+        }
         onPositionChanged: e => {
             // só vira "mover janela" depois de arrastar de verdade (permite duplo/triplo clique)
             if (pressed && Math.abs(e.x - pressPos.x) + Math.abs(e.y - pressPos.y) > 8) root.window.startSystemMove()
         }
+    }
+
+    GlassMenu {
+        id: customizeMenu
+        GlassMenuItem { text: "Personalizar Barra de Ferramentas…"; onTriggered: root.customizeToolbar() }
     }
 
     WindowControls {
@@ -84,6 +94,7 @@ Item {
     component ToolButton: Rectangle {
         id: tb
         property string icon
+        property string tip
         property bool checked
         signal activated
 
@@ -97,9 +108,92 @@ Item {
             anchors.centerIn: parent
             width: 16; height: 16
             sourceSize: Qt.size(32, 32)
-            source: Theme.icon(tb.icon, Theme.text)
+            source: tb.icon ? Theme.icon(tb.icon, Theme.text) : ""
         }
-        MouseArea { id: area; anchors.fill: parent; hoverEnabled: true; onClicked: tb.activated() }
+        MouseArea {
+            id: area
+            anchors.fill: parent
+            hoverEnabled: true
+            ToolTip.visible: tb.tip !== "" && containsMouse
+            ToolTip.text: tb.tip
+            ToolTip.delay: 600
+            onClicked: tb.activated()
+        }
+    }
+
+    // { id: [ícone, dica, ação do Main.qml ou função] } — "view" e "sort" têm componente próprio
+    readonly property var toolDefs: ({
+        hidden: { icon: () => root.fileModel.showHidden ? "view-reveal-symbolic" : "view-conceal-symbolic", tip: "Arquivos ocultos", action: "hidden", checked: () => root.fileModel.showHidden },
+        newFolder: { icon: () => "folder-new-symbolic", tip: "Nova pasta", action: "newFolder", visible: () => !root.fileModel.isTrash && !root.fileModel.path.startsWith("folio:") },
+        preview: { icon: () => "view-dual-symbolic,view-sidebar-symbolic", tip: "Painel de prévia", action: "preview", checked: () => Settings.previewPanel },
+        split: { icon: () => "view-split-symbolic", tip: "Dividir janela", action: "split" },
+        newTab: { icon: () => "tab-new-symbolic", tip: "Nova aba", action: "newTab" },
+        up: { icon: () => "go-up-symbolic", tip: "Pasta acima", action: "up", visible: () => root.navigator.canGoUp },
+        reload: { icon: () => "view-refresh-symbolic", tip: "Recarregar", action: "reload" },
+        home: { icon: () => "user-home-symbolic", tip: "Início", action: "homePage" },
+        terminal: { icon: () => "utilities-terminal-symbolic", tip: "Abrir terminal aqui", action: "terminal" },
+        palette: { icon: () => "system-run-symbolic", tip: "Paleta de comandos", action: "palette" },
+        quickOpen: { icon: () => "system-search-symbolic", tip: "Busca rápida", action: "quickOpen" },
+        copyPath: { icon: () => "edit-copy-symbolic", tip: "Copiar caminho", action: "copyPath" }
+    })
+
+    Component {
+        id: actionButton
+        ToolButton {
+            readonly property string toolId: parent ? parent.modelData : ""
+            readonly property var def: root.toolDefs[toolId]
+            visible: !!def && (!def.visible || def.visible())
+            icon: def ? def.icon() : ""
+            checked: !!def && !!def.checked && def.checked()
+            tip: def ? def.tip + (Theme.keyFor(def.action, "") ? " (" + Theme.keyFor(def.action, "") + ")" : "") : ""
+            onActivated: root.window.runAction(def.action)
+        }
+    }
+
+    Component {
+        id: viewToggle
+        Rectangle { // grade | lista
+            width: 68; height: 32; radius: 16
+            color: Theme.pillBg
+            border.width: 1
+            border.color: Theme.border
+            Row {
+                anchors.centerIn: parent
+                ToolButton {
+                    width: 32; height: 28
+                    icon: "view-grid-symbolic"
+                    checked: root.fileModel.viewMode === "grid"
+                    onActivated: root.fileModel.viewMode = "grid"
+                }
+                ToolButton {
+                    width: 32; height: 28
+                    icon: "view-list-symbolic"
+                    checked: root.fileModel.viewMode === "list"
+                    onActivated: root.fileModel.viewMode = "list"
+                }
+            }
+        }
+    }
+
+    Component {
+        id: sortButton
+        ToolButton {
+            icon: root.fileModel.sortDescending ? "view-sort-descending-symbolic" : "view-sort-ascending-symbolic"
+            tip: "Ordenar"
+            onActivated: sortMenu.popup()
+            GlassMenu {
+                id: sortMenu
+                GlassMenuItem { text: "Nome"; tick: root.fileModel.sortKey === "name"; onTriggered: root.fileModel.sortBy("name") }
+                GlassMenuItem { text: "Data de Modificação"; tick: root.fileModel.sortKey === "modified"; onTriggered: root.fileModel.sortBy("modified") }
+                GlassMenuItem { text: "Tamanho"; tick: root.fileModel.sortKey === "size"; onTriggered: root.fileModel.sortBy("size") }
+                GlassMenuItem { text: "Tipo"; tick: root.fileModel.sortKey === "type"; onTriggered: root.fileModel.sortBy("type") }
+                GlassMenuItem {
+                    text: "Agrupar por Data"
+                    tick: root.fileModel.groupByDate
+                    onTriggered: root.fileModel.groupByDate = !root.fileModel.groupByDate
+                }
+            }
+        }
     }
 
     Row {
@@ -143,59 +237,16 @@ Item {
             MouseArea { id: emptyArea; anchors.fill: parent; hoverEnabled: true; onClicked: root.emptyTrash() }
         }
 
-        Rectangle { // grade | lista
-            visible: !root.narrow
-            anchors.verticalCenter: parent.verticalCenter
-            width: 68; height: 32; radius: 16
-            color: Theme.pillBg
-            border.width: 1
-            border.color: Theme.border
-            Row {
-                anchors.centerIn: parent
-                ToolButton {
-                    width: 32; height: 28
-                    icon: "view-grid-symbolic"
-                    checked: root.fileModel.viewMode === "grid"
-                    onActivated: root.fileModel.viewMode = "grid"
-                }
-                ToolButton {
-                    width: 32; height: 28
-                    icon: "view-list-symbolic"
-                    checked: root.fileModel.viewMode === "list"
-                    onActivated: root.fileModel.viewMode = "list"
-                }
+        // botões escolhidos em Configurações → Janela e barra lateral (clique direito no topo também personaliza)
+        Repeater {
+            model: root.narrow ? [] : Settings.toolbar
+            delegate: Loader {
+                required property string modelData
+                anchors.verticalCenter: parent ? parent.verticalCenter : undefined
+                sourceComponent: modelData === "view" ? viewToggle
+                               : modelData === "sort" ? sortButton
+                               : actionButton
             }
-        }
-
-        ToolButton {
-            visible: !root.narrow
-            icon: root.fileModel.sortDescending ? "view-sort-descending-symbolic" : "view-sort-ascending-symbolic"
-            onActivated: sortMenu.popup()
-            GlassMenu {
-                id: sortMenu
-                GlassMenuItem { text: "Nome"; tick: root.fileModel.sortKey === "name"; onTriggered: root.fileModel.sortBy("name") }
-                GlassMenuItem { text: "Data de Modificação"; tick: root.fileModel.sortKey === "modified"; onTriggered: root.fileModel.sortBy("modified") }
-                GlassMenuItem { text: "Tamanho"; tick: root.fileModel.sortKey === "size"; onTriggered: root.fileModel.sortBy("size") }
-                GlassMenuItem { text: "Tipo"; tick: root.fileModel.sortKey === "type"; onTriggered: root.fileModel.sortBy("type") }
-                GlassMenuItem {
-                    text: "Agrupar por Data"
-                    tick: root.fileModel.groupByDate
-                    onTriggered: root.fileModel.groupByDate = !root.fileModel.groupByDate
-                }
-            }
-        }
-        ToolButton {
-            visible: !root.narrow
-            icon: root.fileModel.showHidden ? "view-reveal-symbolic" : "view-conceal-symbolic"
-            checked: root.fileModel.showHidden
-            onActivated: root.fileModel.showHidden = !root.fileModel.showHidden
-        }
-        ToolButton { icon: "folder-new-symbolic"; visible: !root.narrow && !root.fileModel.isTrash && !root.fileModel.path.startsWith("folio:"); onActivated: root.newFolder() }
-        ToolButton { // painel de prévia (F3)
-            visible: !root.narrow
-            icon: "view-dual-symbolic,view-sidebar-symbolic"
-            checked: Settings.previewPanel
-            onActivated: Settings.previewPanel = !Settings.previewPanel
         }
 
         ToolButton { // overflow no modo estreito

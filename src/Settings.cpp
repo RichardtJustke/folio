@@ -18,7 +18,7 @@
 #include <QtGlobal>
 
 #ifndef FOLIO_VERSION
-#define FOLIO_VERSION "0.28"
+#define FOLIO_VERSION "0.29"
 #endif
 
 Settings::Settings(QObject *parent) : QObject(parent)
@@ -66,8 +66,30 @@ Settings::Settings(QObject *parent) : QObject(parent)
         m_savedTabs = tabs;
     }
     m_shortcuts = c.value("shortcuts").toObject().toVariantMap();
+    if (c.contains("toolbar"))
+        m_toolbar = c.value("toolbar").toVariant().toStringList();
     if (!m_fontFamily.isEmpty())
         QGuiApplication::setFont(QFont(m_fontFamily));
+}
+
+void Settings::setToolbar(const QStringList &v)
+{
+    if (v == m_toolbar)
+        return;
+    m_toolbar = v;
+    auto cfg = Config::load();
+    cfg.insert("toolbar", QJsonArray::fromStringList(v));
+    Config::save(cfg);
+    emit changed();
+}
+
+void Settings::resetToolbar()
+{
+    m_toolbar = defaultToolbar();
+    auto cfg = Config::load();
+    cfg.remove("toolbar");
+    Config::save(cfg);
+    emit changed();
 }
 
 void Settings::saveShortcuts()

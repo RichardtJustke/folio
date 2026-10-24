@@ -22,11 +22,15 @@ Popup {
             const hay = plain(c.label + " " + c.group)
             return words.every(w => hay.includes(w))
         })
-        // usados por último primeiro; depois os que começam com o termo
+        // usados por último primeiro; depois o nome com todas as palavras (começando pela 1ª antes), depois só o grupo
         const rank = c => {
             const u = used.indexOf(c.id)
             if (u >= 0) return u
-            return words.length && plain(c.label).startsWith(words[0]) ? 100 : 200
+            if (!words.length) return 200
+            const name = plain(c.label)
+            const all = words.every(w => name.includes(w))
+            const starts = name.startsWith(words[0])
+            return all && starts ? 100 : all ? 120 : starts ? 140 : 200
         }
         return hit.map((c, i) => ({ c, i })).sort((a, b) => rank(a.c) - rank(b.c) || a.i - b.i).map(x => x.c)
     }

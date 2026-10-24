@@ -42,6 +42,32 @@ Rectangle {
     ]
     property string page: "appearance"
 
+    // botões possíveis da barra de ferramentas (ids de HeaderBar.qml)
+    readonly property var toolCatalog: [
+        { id: "view", label: "Ícones / Lista", icon: "view-grid-symbolic" },
+        { id: "sort", label: "Ordenar", icon: "view-sort-ascending-symbolic" },
+        { id: "hidden", label: "Arquivos ocultos", icon: "view-conceal-symbolic" },
+        { id: "newFolder", label: "Nova pasta", icon: "folder-new-symbolic" },
+        { id: "preview", label: "Painel de prévia", icon: "view-dual-symbolic,view-sidebar-symbolic" },
+        { id: "split", label: "Dividir janela", icon: "view-split-symbolic" },
+        { id: "newTab", label: "Nova aba", icon: "tab-new-symbolic" },
+        { id: "up", label: "Pasta acima", icon: "go-up-symbolic" },
+        { id: "reload", label: "Recarregar", icon: "view-refresh-symbolic" },
+        { id: "home", label: "Início", icon: "user-home-symbolic" },
+        { id: "terminal", label: "Terminal", icon: "utilities-terminal-symbolic" },
+        { id: "palette", label: "Paleta de comandos", icon: "system-run-symbolic" },
+        { id: "quickOpen", label: "Busca rápida", icon: "system-search-symbolic" },
+        { id: "copyPath", label: "Copiar caminho", icon: "edit-copy-symbolic" }
+    ]
+    function toolInfo(id) { return toolCatalog.find(t => t.id === id) || { id: id, label: id, icon: "" } }
+    function moveTool(i, delta) {
+        const t = Settings.toolbar.slice()
+        const j = i + delta
+        if (j < 0 || j >= t.length) return
+        const x = t[i]; t[i] = t[j]; t[j] = x
+        Settings.toolbar = t
+    }
+
     // ── atalhos (aba Gestos e atalhos) ──
     property var actions: []
     property var keysFor: a => a.keys
@@ -610,6 +636,84 @@ Rectangle {
                               { value: "full", label: "Cheia" }, { value: "compact", label: "Ícones" }, { value: "hidden", label: "Oculta" }]
                     current: Settings.sidebarMode
                     onPicked: v => Settings.sidebarMode = v
+                }
+            }
+
+            Line {
+                page: "window"
+                label: "Barra de ferramentas"
+                hint: "Botões do topo, da esquerda para a direita. Clique direito no topo também abre aqui"
+                keywords: "botões personalizar toolbar topo ícones"
+                DialogButton { text: "Restaurar"; onClicked: Settings.resetToolbar() }
+            }
+            PageItem {
+                page: "window"
+                visible: root.needle === "" ? root.page === "window" : root.matches("barra de ferramentas botões personalizar toolbar topo ícones")
+                height: toolFlow.height + 20
+                Flow {
+                    id: toolFlow
+                    y: 8
+                    width: parent.width
+                    spacing: 6
+                    Repeater {
+                        model: Settings.toolbar
+                        delegate: Rectangle {
+                            id: toolChip
+                            required property string modelData
+                            required property int index
+                            readonly property var info: root.toolInfo(modelData)
+                            width: chipRow.width + 12; height: 32; radius: 9
+                            color: Theme.pillBg
+                            border.width: 1; border.color: Theme.border
+                            component ChipBtn: Rectangle {
+                                id: mini
+                                property string glyph
+                                property bool active: true
+                                signal hit
+                                width: 20; height: 20; radius: 10
+                                opacity: active ? 1 : 0.3
+                                color: miniArea.containsMouse && active ? Theme.hover : "transparent"
+                                Text { anchors.centerIn: parent; text: mini.glyph; color: Theme.textDim; font.pixelSize: 13 }
+                                MouseArea { id: miniArea; anchors.fill: parent; hoverEnabled: true; enabled: mini.active; onClicked: mini.hit() }
+                            }
+                            Row {
+                                id: chipRow
+                                x: 6
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 4
+                                ChipBtn { glyph: "‹"; active: toolChip.index > 0; onHit: root.moveTool(toolChip.index, -1) }
+                                Image {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 14; height: 14
+                                    sourceSize: Qt.size(28, 28)
+                                    source: Theme.icon(toolChip.info.icon, Theme.text)
+                                }
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: toolChip.info.label; color: Theme.text; font.pixelSize: 12 }
+                                ChipBtn { glyph: "›"; active: toolChip.index < Settings.toolbar.length - 1; onHit: root.moveTool(toolChip.index, 1) }
+                                ChipBtn { glyph: "×"; onHit: Settings.toolbar = Settings.toolbar.filter(t => t !== toolChip.modelData) }
+                            }
+                        }
+                    }
+                    Rectangle { // adicionar um botão que não está na barra
+                        readonly property var missing: root.toolCatalog.filter(t => !Settings.toolbar.includes(t.id))
+                        visible: missing.length > 0
+                        width: addText.implicitWidth + 24; height: 32; radius: 9
+                        color: addArea.containsMouse ? Theme.hover : "transparent"
+                        border.width: 1; border.color: Theme.border
+                        Text { id: addText; anchors.centerIn: parent; text: "+ Adicionar"; color: Theme.accent; font.pixelSize: 12 }
+                        MouseArea { id: addArea; anchors.fill: parent; hoverEnabled: true; onClicked: addToolMenu.popup() }
+                        GlassMenu {
+                            id: addToolMenu
+                            Repeater {
+                                model: parent ? parent.parent.missing : []
+                                delegate: GlassMenuItem {
+                                    required property var modelData
+                                    text: modelData.label
+                                    onTriggered: Settings.toolbar = Settings.toolbar.concat([modelData.id])
+                                }
+                            }
+                        }
+                    }
                 }
             }
 

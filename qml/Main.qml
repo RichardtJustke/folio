@@ -397,6 +397,7 @@ Window {
                 onOpenPath: typed => win.openPath(typed)
                 onNewFolder: win.tab.newFolder()
                 onEmptyTrash: win.requestEmptyTrash()
+                onCustomizeToolbar: { settingsPage.openPage("window"); win.settingsOpen = true }
                 onFocusView: win.focusView()
             }
         }

@@ -2,6 +2,12 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.29
+- Barra de ferramentas personalizável (Configurações → Janela e barra lateral, ou clique direito no topo → "Personalizar Barra de Ferramentas…"): cada botão vira um cartão com ‹ › para reordenar e × para tirar; "+ Adicionar" traz os que estão de fora. Botões novos disponíveis: Dividir janela, Nova aba, Pasta acima, Recarregar, Início, Terminal, Paleta de comandos, Busca rápida e Copiar caminho. "Restaurar" volta ao padrão.
+- Os botões do topo mostram uma dica com o nome e o atalho ao passar o mouse.
+- Paleta de comandos: comandos com todas as palavras digitadas no nome vêm antes dos que só batem pelo grupo.
+- Modo de teste: `space` em `FOLIO_KEYS` digita um espaço.
+
 ## Alpha 0.28
 - Reatribuir teclas (Configurações → Gestos e atalhos): todas as ações listadas por grupo com o atalho atual. Clique no atalho e aperte a combinação nova; Backspace deixa sem atalho, Esc cancela. Se a combinação já era de outra ação, ela sai de lá (e aparece o aviso "Tirado de “…”"). ↺ volta ao padrão de uma ação; "Restaurar todos" volta todos.
 - Os atalhos trocados valem também na paleta de comandos e nas dicas dos menus. Ficam em `shortcuts` no `config.json`.

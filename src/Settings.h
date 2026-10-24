@@ -27,6 +27,8 @@ class Settings : public QObject
     Q_PROPERTY(int iconRevision READ iconRevision NOTIFY changed)
     Q_PROPERTY(QString fileIcons READ fileIcons WRITE setFileIcons NOTIFY changed)          // duotone | mac | outline | flat | system
     Q_PROPERTY(bool previewPanel READ previewPanel WRITE setPreviewPanel NOTIFY changed)
+    // botões da barra de ferramentas, na ordem (ids em HeaderBar.qml)
+    Q_PROPERTY(QStringList toolbar READ toolbar WRITE setToolbar NOTIFY changed)
     Q_PROPERTY(bool singleWindow READ singleWindow WRITE setSingleWindow NOTIFY changed)
     Q_PROPERTY(bool swipeNavigation READ swipeNavigation WRITE setSwipeNavigation NOTIFY changed)
     Q_PROPERTY(bool swipeInvert READ swipeInvert WRITE setSwipeInvert NOTIFY changed)
@@ -77,6 +79,9 @@ public:
     void setWindowGeometry(const QVariantMap &v);
     QVariantList savedTabs() const { return m_savedTabs; }
     QVariantMap shortcuts() const { return m_shortcuts; }
+    QStringList toolbar() const { return m_toolbar; }
+    void setToolbar(const QStringList &v);
+    Q_INVOKABLE void resetToolbar();
     Q_INVOKABLE void setShortcut(const QString &action, const QStringList &keys);
     Q_INVOKABLE void resetShortcut(const QString &action);
     Q_INVOKABLE void resetAllShortcuts();
@@ -148,5 +153,7 @@ private:
     QVariantMap m_windowGeometry;
     QVariantList m_savedTabs;
     QVariantMap m_shortcuts;
+    static QStringList defaultToolbar() { return {"view", "sort", "hidden", "newFolder", "preview"}; }
+    QStringList m_toolbar = defaultToolbar();
     void saveShortcuts();
 };
