@@ -30,7 +30,36 @@ Rectangle {
 
     readonly property var swatches: ["#0a84ff", "#5e5ce6", "#bf5af2", "#ff375f", "#ff9f0a", "#30d158", "#64d2ff", "#98989d"]
 
+    // ── abas ──
+    readonly property var pages: [
+        { id: "appearance", label: "Aparência", icon: "preferences-desktop-appearance-symbolic", sub: "Tema, cores, ícones e fonte" },
+        { id: "window", label: "Janela e barra lateral", icon: "view-sidebar-symbolic", sub: "Controles da janela e barra lateral" },
+        { id: "motion", label: "Animações", icon: "preferences-desktop-animation-symbolic", sub: "Movimento e velocidade" },
+        { id: "behavior", label: "Comportamento", icon: "input-mouse-symbolic", sub: "Cliques, janelas, exclusão e terminal" },
+        { id: "input", label: "Gestos e atalhos", icon: "input-keyboard-symbolic", sub: "Touchpad e teclado" },
+        { id: "apps", label: "Aplicativos padrão", icon: "view-app-grid-symbolic", sub: "Que aplicativo abre cada tipo de arquivo" },
+        { id: "about", label: "Sobre", icon: "help-about-symbolic", sub: "Versão e arquivo de configuração" }
+    ]
+    property string page: "appearance"
+    property string query: ""
+    readonly property string needle: query.trim().toLowerCase()
+    function pageInfo(id) { return pages.find(p => p.id === id) }
+    function matches(text) { return text.toLowerCase().includes(needle) }
+    // na busca: quantas opções de cada aba batem
+    readonly property var hits: {
+        const out = {}
+        if (!needle) return out
+        for (const c of col.children)
+            if (c.page && c.searchText !== undefined && matches(c.searchText)) out[c.page] = (out[c.page] || 0) + 1
+        return out
+    }
+    readonly property int hitCount: Object.values(hits).reduce((a, b) => a + b, 0)
+    function openPage(id) { query = ""; page = id; flick.contentY = 0 }
+
     component SectionTitle: Text {
+        property string page
+        visible: root.needle !== "" && (root.hits[page] || 0) > 0
+        text: root.pageInfo(page).label
         width: parent.width
         topPadding: 18
         color: Theme.textFaint
@@ -39,10 +68,20 @@ Rectangle {
         font.capitalization: Font.AllUppercase
     }
 
+    component PageItem: Item { // bloco sem rótulo: só aparece na própria aba, fora da busca
+        property string page
+        width: parent.width
+        visible: root.needle === "" && root.page === page
+    }
+
     component Line: Item {
         id: line
+        property string page
         property string label
         property string hint
+        property string keywords // termos extras para a busca
+        readonly property string searchText: label + " " + hint + " " + keywords
+        visible: root.needle !== "" ? root.matches(searchText) : root.page === page
         default property alias content: slot.data
         // em janelas estreitas o controle vai para baixo do rótulo
         readonly property bool stacked: width < 440
@@ -140,12 +179,17 @@ Rectangle {
         onPicked: v => Settings.iconTheme = v
     }
 
+    readonly property bool narrow: width < 640
+    // ao abrir, já dá para digitar e buscar
+    onVisibleChanged: if (visible) searchField.forceActiveFocus()
+
     // cabeçalho
     Item {
         id: top
         anchors { left: parent.left; right: parent.right; top: parent.top }
         height: 54
         Text {
+            id: heading
             anchors { left: parent.left; leftMargin: 24; verticalCenter: parent.verticalCenter }
             text: "Configurações"
             color: Theme.text
@@ -153,6 +197,7 @@ Rectangle {
             font.weight: Font.Bold
         }
         Rectangle {
+            id: closeBtn
             anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter }
             width: 28; height: 28; radius: 14
             color: closeArea.containsMouse ? Theme.hover : "transparent"
@@ -166,8 +211,108 @@ Rectangle {
         }
     }
 
+    // busca: no topo da lista de abas (em janela estreita, no cabeçalho)
+    Rectangle {
+        id: searchBox
+        x: root.narrow ? heading.x + heading.width + 16 : 16
+        y: root.narrow ? (top.height - height) / 2 : top.height
+        width: root.narrow ? Math.max(120, closeBtn.x - x - 12) : nav.width - 8
+        height: 32
+        radius: 9
+        color: Theme.pillBg
+        border.width: 1
+        border.color: searchField.activeFocus ? Theme.accent : Theme.border
+        Image {
+            id: searchIcon
+            x: 10
+            anchors.verticalCenter: parent.verticalCenter
+            width: 13; height: 13
+            sourceSize: Qt.size(26, 26)
+            source: Theme.icon("system-search-symbolic", Theme.textFaint)
+        }
+        TextField {
+            id: searchField
+            anchors { left: searchIcon.right; leftMargin: 4; right: parent.right; rightMargin: 4; verticalCenter: parent.verticalCenter }
+            text: root.query
+            onTextEdited: { root.query = text; flick.contentY = 0 }
+            placeholderText: "Buscar configuração"
+            placeholderTextColor: Theme.textFaint
+            color: Theme.text
+            font.pixelSize: 12
+            selectionColor: Theme.accent
+            background: null
+            Keys.onEscapePressed: e => { if (root.query) { root.query = ""; e.accepted = true } else e.accepted = false }
+        }
+    }
+
+    Column {
+        id: nav
+        anchors { left: parent.left; leftMargin: 12; top: root.narrow ? top.bottom : searchBox.bottom; topMargin: 10 }
+        width: root.narrow ? 44 : 212
+        spacing: 2
+        Repeater {
+            model: root.pages
+            delegate: Rectangle {
+                id: navItem
+                required property var modelData
+                readonly property bool current: root.needle === "" && root.page === modelData.id
+                readonly property int count: root.hits[modelData.id] || 0
+                width: nav.width
+                height: 34
+                radius: 9
+                opacity: root.needle !== "" && count === 0 ? 0.45 : 1
+                color: current ? Theme.selected : navArea.containsMouse ? Theme.hover : "transparent"
+                Behavior on color { ColorAnimation { duration: Theme.dur(90) } }
+                Image {
+                    x: root.narrow ? (parent.width - width) / 2 : 12
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 16; height: 16
+                    sourceSize: Qt.size(32, 32)
+                    source: Theme.icon(navItem.modelData.icon, navItem.current ? Theme.accent : Theme.textDim)
+                }
+                Text {
+                    visible: !root.narrow
+                    anchors { left: parent.left; leftMargin: 38; right: badge.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
+                    text: navItem.modelData.label
+                    color: navItem.current ? Theme.text : Theme.textDim
+                    font.pixelSize: Theme.fontSize
+                    elide: Text.ElideRight
+                }
+                Rectangle { // na busca: quantas opções desta aba batem
+                    id: badge
+                    visible: !root.narrow && navItem.count > 0
+                    anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                    width: visible ? Math.max(18, badgeText.implicitWidth + 10) : 0; height: 18; radius: 9
+                    color: Theme.tint(Theme.accent, 0.22)
+                    Text { id: badgeText; anchors.centerIn: parent; text: navItem.count; color: Theme.accent; font.pixelSize: 10; font.weight: Font.Bold }
+                }
+                MouseArea {
+                    id: navArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    ToolTip.visible: root.narrow && containsMouse
+                    ToolTip.text: navItem.modelData.label
+                    ToolTip.delay: 400
+                    onClicked: root.openPage(navItem.modelData.id)
+                }
+            }
+        }
+    }
+
+    Rectangle { // painel da aba
+        id: panel
+        anchors { left: nav.right; leftMargin: 12; right: parent.right; rightMargin: 12; top: top.bottom; bottom: parent.bottom; bottomMargin: 12 }
+        radius: Theme.radius - 6
+        color: Theme.subtle
+        border.width: 1
+        border.color: Theme.border
+    }
+
     Flickable {
-        anchors { left: parent.left; right: parent.right; top: top.bottom; bottom: parent.bottom }
+        id: flick
+        anchors.fill: panel
+        anchors.margins: 1
         contentWidth: width
         contentHeight: col.height + 40
         clip: true
@@ -176,19 +321,94 @@ Rectangle {
 
         Column {
             id: col
-            x: Math.max(20, (parent.width - width) / 2)
-            width: Math.min(560, parent.width - 40)
+            x: Math.max(20, Math.min(36, (parent.width - width) / 2))
+            width: Math.min(620, parent.width - 40)
 
-            SectionTitle { text: "Aparência" }
+            Item { // título da aba
+                width: parent.width
+                height: 72
+                visible: root.needle === ""
+                Image {
+                    id: pageIcon
+                    y: 24
+                    width: 18; height: 18
+                    sourceSize: Qt.size(36, 36)
+                    source: Theme.icon(root.pageInfo(root.page).icon, Theme.accent)
+                }
+                Text {
+                    anchors { left: pageIcon.right; leftMargin: 10; verticalCenter: pageIcon.verticalCenter }
+                    text: root.pageInfo(root.page).label
+                    color: Theme.text
+                    font.pixelSize: 16
+                    font.weight: Font.Bold
+                }
+                Text {
+                    y: 48
+                    text: root.pageInfo(root.page).sub
+                    color: Theme.textFaint
+                    font.pixelSize: 11
+                }
+            }
+            Text {
+                visible: root.needle !== "" && root.hitCount === 0
+                width: parent.width
+                topPadding: 28
+                text: "Nada encontrado para “" + root.query.trim() + "”"
+                color: Theme.textDim
+                font.pixelSize: Theme.fontSize
+                wrapMode: Text.Wrap
+            }
+
+            // ── Aparência ──
+            SectionTitle { page: "appearance" }
             Line {
+                page: "appearance"
                 label: "Tema"
-                Segmented {
-                    options: [{ value: "dark", label: "Escuro" }, { value: "light", label: "Claro" }]
-                    current: Settings.theme
-                    onPicked: v => Settings.theme = v
+                keywords: "escuro claro automático sistema modo noturno"
+                Row {
+                    spacing: 8
+                    Repeater {
+                        model: [{ value: "dark", label: "Escuro" }, { value: "light", label: "Claro" }, { value: "auto", label: "Automático" }]
+                        delegate: Rectangle {
+                            id: themeCard
+                            required property var modelData
+                            readonly property bool on: Settings.theme === modelData.value
+                            width: 92; height: 76; radius: 10
+                            color: Theme.pillBg
+                            border.width: on ? 2 : 1
+                            border.color: on ? Theme.accent : Theme.border
+                            component Mini: Rectangle {
+                                property bool lightLook
+                                radius: 5
+                                color: lightLook ? "#f2f2f4" : "#1c1c1e"
+                                Rectangle { x: 4; y: 4; width: parent.width * 0.3; height: parent.height - 8; radius: 3; color: parent.lightLook ? "#dedee3" : "#2e2e31" }
+                                Rectangle { x: parent.width * 0.3 + 8; y: 6; width: parent.width * 0.45; height: 4; radius: 2; color: parent.lightLook ? "#c4c4ca" : "#48484c" }
+                                Rectangle { x: parent.width * 0.3 + 8; y: 14; width: parent.width * 0.3; height: 4; radius: 2; color: Theme.accent }
+                            }
+                            Item {
+                                x: 6; y: 6; width: parent.width - 12; height: 44
+                                clip: true
+                                Mini { anchors.fill: parent; lightLook: themeCard.modelData.value === "light" }
+                                Item { // automático: metade direita clara
+                                    visible: themeCard.modelData.value === "auto"
+                                    x: parent.width / 2; width: parent.width / 2; height: parent.height
+                                    clip: true
+                                    Mini { x: -parent.x; width: parent.parent.width; height: parent.height; lightLook: true }
+                                }
+                            }
+                            Text {
+                                anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 6 }
+                                text: themeCard.modelData.label
+                                color: themeCard.on ? Theme.text : Theme.textDim
+                                font.pixelSize: 11
+                            }
+                            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: Settings.theme = themeCard.modelData.value }
+                        }
+                    }
                 }
             }
             Line {
+                page: "appearance"
                 label: "Cor de destaque"
                 Row {
                     spacing: 8
@@ -206,6 +426,7 @@ Rectangle {
                 }
             }
             Line {
+                page: "appearance"
                 label: "Cor personalizada"
                 hint: "Hex, ex.: #ff7a59"
                 TextField {
@@ -219,24 +440,29 @@ Rectangle {
                 }
             }
             Line {
+                page: "appearance"
                 label: "Transparência da janela"
                 hint: "Menor = mais vidro (precisa de blur no compositor)"
                 Stepper { from: 0.3; to: 1.0; value: Settings.backgroundOpacity; onMoved: Settings.backgroundOpacity = value }
             }
             Line {
+                page: "appearance"
                 label: "Arredondamento"
                 Stepper { from: 0; to: 28; stepSize: 1; value: Settings.cornerRadius; onMoved: Settings.cornerRadius = Math.round(value) }
             }
             Line {
+                page: "appearance"
                 label: "Tamanho dos ícones"
                 hint: "Também: Ctrl + / Ctrl -"
                 Stepper { from: 40; to: 140; stepSize: 4; value: Settings.iconSize; onMoved: Settings.iconSize = Math.round(value) }
             }
             Line {
+                page: "appearance"
                 label: "Tamanho da fonte"
                 Stepper { from: 10; to: 18; stepSize: 1; value: Settings.fontSize; onMoved: Settings.fontSize = Math.round(value) }
             }
             Line {
+                page: "appearance"
                 label: "Fonte"
                 hint: Settings.fontFamily !== root.fontAtLaunch ? "Reinicie o Folio para aplicar em toda a interface" : "Família usada em toda a interface"
                 Row {
@@ -254,6 +480,7 @@ Rectangle {
                 }
             }
             Line {
+                page: "appearance"
                 label: "Ícones dos arquivos"
                 hint: "Estilo dos ícones na área de arquivos"
                 Segmented {
@@ -265,6 +492,7 @@ Rectangle {
                 }
             }
             Line {
+                page: "appearance"
                 label: "Tema de ícones"
                 hint: "Aplicado na hora"
                 DialogButton {
@@ -273,18 +501,27 @@ Rectangle {
                 }
             }
             Line {
+                page: "appearance"
                 label: "Melhorar legibilidade"
                 hint: "Com transparência: reforça o contraste dos textos e escurece/clareia o fundo da área de arquivos"
                 Toggle { on: Settings.legibility; onToggled: v => Settings.legibility = v }
             }
 
-            SectionTitle { text: "Animações" }
             Line {
+                page: "appearance"
+                label: "Restaurar aparência padrão"
+                DialogButton { text: "Restaurar"; onClicked: Settings.resetAppearance() }
+            }
+
+            SectionTitle { page: "motion" }
+            Line {
+                page: "motion"
                 label: "Reduzir movimento"
                 hint: "Desliga todas as animações (itens voando, deslizes, transições)"
                 Toggle { on: Settings.reduceMotion; onToggled: v => Settings.reduceMotion = v }
             }
             Line {
+                page: "motion"
                 label: "Velocidade das animações"
                 hint: Settings.animationSpeed.toFixed(1) + "× — maior = mais rápido"
                 Stepper {
@@ -295,8 +532,9 @@ Rectangle {
                 }
             }
 
-            SectionTitle { text: "Janela e layout" }
+            SectionTitle { page: "window" }
             Line {
+                page: "window"
                 label: "Controles da janela"
                 hint: "Minimizar, maximizar e fechar"
                 Segmented {
@@ -306,6 +544,7 @@ Rectangle {
                 }
             }
             Line {
+                page: "window"
                 label: "Barra lateral"
                 hint: "Automático: some e encolhe conforme a largura (Ctrl+B alterna)"
                 Segmented {
@@ -316,31 +555,25 @@ Rectangle {
                 }
             }
 
-            SectionTitle { text: "Comportamento" }
+            SectionTitle { page: "behavior" }
             Line {
+                page: "behavior"
                 label: "Abrir com um clique"
                 Toggle { on: Settings.singleClick; onToggled: v => Settings.singleClick = v }
             }
             Line {
+                page: "behavior"
                 label: "Janela única"
                 hint: "Abrir o Folio de novo (Super+E, outros apps) usa a janela aberta, numa aba nova. Ctrl+N ainda abre outra janela"
                 Toggle { on: Settings.singleWindow; onToggled: v => Settings.singleWindow = v }
             }
             Line {
-                label: "Gestos do touchpad"
-                hint: "Deslizar dois dedos para a direita volta; para a esquerda avança"
-                Toggle { on: Settings.swipeNavigation; onToggled: v => Settings.swipeNavigation = v }
-            }
-            Line {
-                label: "Inverter direção do gesto"
-                hint: "Use se voltar e avançar saírem trocados no seu touchpad"
-                Toggle { on: Settings.swipeInvert; onToggled: v => Settings.swipeInvert = v }
-            }
-            Line {
+                page: "behavior"
                 label: "Confirmar antes de excluir permanentemente"
                 Toggle { on: Settings.confirmTrash; onToggled: v => Settings.confirmTrash = v }
             }
             Line {
+                page: "behavior"
                 label: "Terminal"
                 hint: "Comando usado em “Abrir Terminal Aqui” (F4). Vazio = detectar automaticamente"
                 TextField {
@@ -355,15 +588,27 @@ Rectangle {
                     onEditingFinished: Settings.terminal = text
                 }
             }
+
+            SectionTitle { page: "input" }
             Line {
-                label: "Restaurar aparência padrão"
-                DialogButton { text: "Restaurar"; onClicked: Settings.resetAppearance() }
+                page: "input"
+                label: "Gestos do touchpad"
+                keywords: "swipe deslizar dedos voltar avançar"
+                hint: "Deslizar dois dedos para a direita volta; para a esquerda avança"
+                Toggle { on: Settings.swipeNavigation; onToggled: v => Settings.swipeNavigation = v }
+            }
+            Line {
+                page: "input"
+                label: "Inverter direção do gesto"
+                hint: "Use se voltar e avançar saírem trocados no seu touchpad"
+                Toggle { on: Settings.swipeInvert; onToggled: v => Settings.swipeInvert = v }
             }
 
-            SectionTitle { text: "Aplicativos padrão" }
+            SectionTitle { page: "apps" }
             Repeater {
                 model: root.fileKinds
                 delegate: Line {
+                    page: "apps"
                     id: kindLine
                     required property var modelData
                     label: modelData.label
@@ -414,9 +659,9 @@ Rectangle {
                 }
             }
 
-            SectionTitle { text: "Sobre" }
-            Item {
-                width: parent.width
+            SectionTitle { page: "about" }
+            PageItem {
+                page: "about"
                 height: 120
                 Image {
                     id: logo
@@ -435,11 +680,13 @@ Rectangle {
                 }
             }
             Line {
+                page: "about"
                 label: "Arquivo de configuração"
                 hint: Settings.configPath()
                 Item { width: 1; height: 1 }
             }
             Text {
+                visible: root.needle === "" && root.page === "about"
                 width: parent.width
                 topPadding: 10
                 text: "Esta é uma versão alpha: recursos podem mudar e haver falhas. Use com cuidado em arquivos importantes."

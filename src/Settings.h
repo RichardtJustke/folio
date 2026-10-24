@@ -11,7 +11,7 @@ class Settings : public QObject
     QML_ELEMENT
     QML_SINGLETON
 
-    Q_PROPERTY(QString theme READ theme WRITE setTheme NOTIFY changed)                       // dark | light
+    Q_PROPERTY(QString theme READ theme WRITE setTheme NOTIFY changed)                       // dark | light | auto
     Q_PROPERTY(QString accent READ accent WRITE setAccent NOTIFY changed)                    // #rrggbb
     Q_PROPERTY(qreal backgroundOpacity READ backgroundOpacity WRITE setBackgroundOpacity NOTIFY changed)
     Q_PROPERTY(int cornerRadius READ cornerRadius WRITE setCornerRadius NOTIFY changed)

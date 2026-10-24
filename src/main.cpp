@@ -50,7 +50,7 @@ void runSnapshot(QQmlApplicationEngine &engine)
         QTimer::singleShot(1500 + i * 250, win, [win, key = keys.at(i)] {
             if (key.startsWith("swipe-"))
                 return sendSwipe(win, key == "swipe-right");
-            const auto combo = QKeySequence(key == "comma" ? QStringLiteral(",") : key)[0];
+            const auto combo = QKeySequence(QString(key).replace("comma", ","))[0];
             const auto text = combo.keyboardModifiers() & ~Qt::ShiftModifier ? QString()
                             : key.size() == 1 ? key : QString();
             QKeyEvent press(QEvent::KeyPress, combo.key(), combo.keyboardModifiers(), text);

@@ -2,7 +2,8 @@ pragma Singleton
 import QtQuick
 
 QtObject {
-    readonly property bool light: Settings.theme === "light"
+    // "auto" segue o esquema de cores do sistema (portal/qt6ct)
+    readonly property bool light: Settings.theme === "auto" ? Qt.styleHints.colorScheme === Qt.ColorScheme.Light : Settings.theme === "light"
     readonly property real base: light ? 0 : 1 // canal das sobreposições (preto no tema claro)
     function overlay(alpha) { return Qt.rgba(base, base, base, alpha) }
     function tint(c, alpha) { return Qt.rgba(c.r, c.g, c.b, alpha) }

@@ -2,6 +2,12 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.23
+- Configurações em abas: Aparência, Janela e barra lateral, Animações, Comportamento, Gestos e atalhos, Aplicativos padrão e Sobre, numa lista à esquerda (só ícones em janela estreita).
+- Busca no topo: ao abrir as Configurações já dá para digitar; mostra as opções de todas as abas que batem, agrupadas, e a contagem ao lado de cada aba. Esc limpa a busca (com ela vazia, fecha).
+- Tema em cartões com prévia e a opção nova **Automático**, que segue o modo claro/escuro do sistema.
+- Modo de teste: `Ctrl+comma` em `FOLIO_KEYS`.
+
 ## Alpha 0.22
 - Página **Início** (primeiro item da barra lateral): Acesso rápido com as pastas fixadas e as pastas que você usou por último (o alfinete fixa ou desafixa), Discos com barra de uso e espaço livre, e Arquivos recentes com a pasta e quando foram abertos. Cada seção recolhe pela setinha; clique direito abre "Mostrar na Pasta", "Copiar Caminho"…
 - Soltar arquivos num bloco do Acesso rápido copia para aquela pasta.

@@ -580,7 +580,7 @@ Window {
     Shortcut { sequences: ["Ctrl+B", "F9"]; onActivated: win.toggleSidebar() }
     Shortcut { sequences: ["F11"]; onActivated: win.toggleFullscreen() }
     Shortcut { sequence: "Ctrl+,"; onActivated: win.settingsOpen = !win.settingsOpen }
-    Shortcut { sequence: "Escape"; enabled: win.settingsOpen; onActivated: win.settingsOpen = false }
+    Shortcut { sequence: "Escape"; enabled: win.settingsOpen && settingsPage.query === ""; onActivated: win.settingsOpen = false }
     Shortcut { sequences: ["Alt+Return", "Ctrl+I"]; enabled: win.ready; onActivated: win.showProperties(fm.selectedPaths().length ? fm.selectedPaths() : [fm.path]) }
     Shortcut { sequence: "Ctrl+Shift+I"; enabled: win.ready; onActivated: fm.invertSelection() }
     Shortcut { sequence: "Ctrl+S"; enabled: win.ready; onActivated: win.promptSelectPattern() }
