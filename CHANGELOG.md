@@ -2,6 +2,12 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.32
+- Arquivos **.rar** e **.7z** pelo `7z` (p7zip/7-Zip): entrar no arquivo lista todas as versões (RAR5 inclusive) com tamanho, data e tipo de cada item; "Extrair Aqui" usa o `7z` (ou `unrar`/`unar`, se instalados).
+- Arquivos protegidos por senha avisam "Arquivo protegido por senha" em vez de ficar esperando a senha num terminal invisível.
+- "Compactar em .7z" no menu de contexto (com o `7z` instalado).
+- Correção: aviso no menu de itens dentro de arquivos compactados.
+
 ## Alpha 0.31
 - Nuvem na barra lateral: as contas do **rclone** (Google Drive, OneDrive, Dropbox, Box, pCloud…) aparecem em "Nuvem". O clique monta a conta em `~/.local/share/folio/nuvem/<nome>` e abre; o botão de ejetar desmonta. Também entram as montagens do Google Drive/OneDrive das contas online (gvfs) e as pastas sincronizadas que existirem (`~/OneDrive`, `~/Dropbox`, `~/Google Drive`, `~/Nextcloud`, `~/MEGA`…).
 - "Adicionar nuvem…" (barra lateral ou paleta): escolha o serviço e o nome; o rclone abre o navegador para entrar na conta e a nuvem já é montada e aberta. "Outro serviço…" abre o `rclone config` no terminal. Sem o rclone instalado, o diálogo mostra o comando para instalar.

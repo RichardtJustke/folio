@@ -95,11 +95,13 @@ public:
     // liga a etiqueta em todos (ou desliga, se todos já têm); devolve se ficou ligada
     Q_INVOKABLE bool toggleTag(const QStringList &paths, const QString &tag);
     Q_INVOKABLE QStringList tagsOf(const QString &path) const;
-    Q_INVOKABLE void compress(const QStringList &paths, const QString &format); // "zip" | "tar.gz"
+    Q_INVOKABLE void compress(const QStringList &paths, const QString &format); // "zip" | "tar.gz" | "7z"
     Q_INVOKABLE void extract(const QString &archive);
     Q_INVOKABLE bool isArchive(const QString &path) const;
     static bool isArchiveStatic(const QString &path);
     Q_INVOKABLE bool canZip() const;
+    Q_INVOKABLE bool can7z() const;
+    static QString sevenZipTool();
     Q_INVOKABLE void copyText(const QString &text);
     Q_INVOKABLE void openNewWindow(const QString &path);
     Q_INVOKABLE QVariantList openWithApps(const QString &path) const; // [{name, id, icon}]

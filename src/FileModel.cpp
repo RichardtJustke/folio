@@ -192,6 +192,76 @@ QString trashFilesDir()
 }
 
 // Lista o conteúdo de um arquivo compactado (.zip, .tar.gz, .tar, .7z) como se fosse uma pasta
+FileEntry archiveEntry(const QString &archivePath, const QString &name, qint64 size, const QDateTime &modified)
+{
+    static const QMimeDatabase mimeDb;
+    FileEntry e;
+    e.name = name;
+    e.path = archivePath + "::" + name; // caminho virtual dentro do arquivo
+    e.location = Config::contract(archivePath);
+    e.isDir = false;
+    e.isHidden = false;
+    e.isSymlink = false;
+    e.modified = modified;
+    e.size = size;
+    e.itemCount = -1;
+    e.preview = "icon";
+    const auto mime = mimeDb.mimeTypeForFile(name, QMimeDatabase::MatchExtension);
+    e.icon = mime.iconName() + "," + mime.genericIconName() + ",text-x-generic";
+    e.mime = mime.name();
+    e.typeName = mime.comment();
+    e.section = DateSection::Older;
+    const int dot = e.name.lastIndexOf('.');
+    e.extension = dot > 0 ? e.name.mid(dot) : QString();
+    return e;
+}
+
+// "7z l -slt": blocos "Path = …", "Folder = +/-", "Size = …", "Modified = 2026-10-24 01:47:00"
+Listing listWith7z(const QString &archivePath)
+{
+    Listing out;
+    QProcess proc;
+    proc.start(FileOps::sevenZipTool(), {"l", "-slt", "-p", "-ba", archivePath});
+    proc.closeWriteChannel();
+    if (!proc.waitForFinished(10000)) {
+        proc.kill();
+        out.error = QStringLiteral("Não foi possível ler o arquivo compactado.");
+        return out;
+    }
+    const auto text = QString::fromLocal8Bit(proc.readAllStandardOutput() + proc.readAllStandardError());
+    if (proc.exitCode() != 0) {
+        out.error = text.contains("password", Qt::CaseInsensitive) || text.contains("encrypted", Qt::CaseInsensitive)
+                  ? QStringLiteral("Arquivo protegido por senha.")
+                  : QStringLiteral("Não foi possível ler o arquivo compactado.");
+        return out;
+    }
+    QString path;
+    qint64 size = 0;
+    bool folder = false;
+    QDateTime modified;
+    const auto flush = [&] {
+        if (!path.isEmpty() && !folder)
+            out.entries.append(archiveEntry(archivePath, path, size, modified));
+        path.clear();
+        size = 0;
+        folder = false;
+        modified = {};
+    };
+    for (const auto &raw : text.split('\n')) {
+        const auto line = raw.trimmed();
+        if (line.isEmpty()) { flush(); continue; }
+        const auto key = line.section(" = ", 0, 0);
+        const auto value = line.section(" = ", 1);
+        if (key == "Path") { flush(); path = value; }
+        else if (key == "Folder") folder = value == "+";
+        else if (key == "Attributes") folder = folder || value.startsWith('D');
+        else if (key == "Size") size = value.toLongLong();
+        else if (key == "Modified") modified = QDateTime::fromString(value.left(19), "yyyy-MM-dd HH:mm:ss");
+    }
+    flush();
+    return out;
+}
+
 Listing listArchive(const QString &archivePath)
 {
     Listing out;
@@ -201,6 +271,10 @@ Listing listArchive(const QString &archivePath)
         return out;
     }
     const QString suffix = fi.suffix().toLower();
+
+    // .7z e .rar: o 7z lê todas as versões (RAR5 inclusive) e dá tamanho e data de cada item
+    if ((suffix == "7z" || suffix == "rar") && !FileOps::sevenZipTool().isEmpty())
+        return listWith7z(archivePath);
 
     QString prog;
     QStringList args;

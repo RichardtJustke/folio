@@ -416,7 +416,7 @@ Item {
         }
         GlassMenuItem {
             text: "Entrar no arquivo"
-            visible: root.selection.length === 1 && root.currentEntry.isArchive
+            visible: root.selection.length === 1 && root.currentEntry.isArchive === true
             onTriggered: root.enterArchive(root.selection[0])
         }
         GlassMenuItem {
@@ -484,6 +484,11 @@ Item {
             text: "Compactar em .zip"
             visible: !root.fileModel.isTrash && root.ops.canZip()
             onTriggered: root.ops.compress(root.selection, "zip")
+        }
+        GlassMenuItem {
+            text: "Compactar em .7z"
+            visible: !root.fileModel.isTrash && root.ops.can7z()
+            onTriggered: root.ops.compress(root.selection, "7z")
         }
         GlassMenuItem {
             text: "Compactar em .tar.gz"

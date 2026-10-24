@@ -1000,6 +1000,20 @@ bool FileOps::canZip() const
     return !QStandardPaths::findExecutable("zip").isEmpty();
 }
 
+bool FileOps::can7z() const
+{
+    return !sevenZipTool().isEmpty();
+}
+
+// 7z (p7zip), 7zz (7-Zip oficial) ou 7za
+QString FileOps::sevenZipTool()
+{
+    for (const char *t : {"7z", "7zz", "7za"})
+        if (!QStandardPaths::findExecutable(QString::fromLatin1(t)).isEmpty())
+            return QString::fromLatin1(t);
+    return {};
+}
+
 bool FileOps::isArchive(const QString &path) const
 {
     const QFileInfo fi(path);
@@ -1019,7 +1033,8 @@ void FileOps::compress(const QStringList &paths, const QString &format)
     const QFileInfo first(paths.first());
     const auto dir = first.absolutePath();
     const bool zip = format == "zip" && canZip();
-    const QString ext = zip ? ".zip" : ".tar.gz";
+    const bool seven = format == "7z" && can7z();
+    const QString ext = zip ? ".zip" : seven ? ".7z" : ".tar.gz";
     const QString base = paths.size() == 1 ? first.completeBaseName().isEmpty() ? first.fileName() : first.fileName() : QStringLiteral("Arquivo");
     QString out = dir + "/" + base + ext;
     for (int n = 2; QFileInfo::exists(out); ++n)
@@ -1052,6 +1067,8 @@ void FileOps::compress(const QStringList &paths, const QString &format)
     setBusy(true, QStringLiteral("Compactando"));
     if (zip)
         proc->start("zip", QStringList{"-rq", out} + names);
+    else if (seven)
+        proc->start(sevenZipTool(), QStringList{"a", "-t7z", "-y", out} + names);
     else
         proc->start("tar", QStringList{"-czf", out, "-C", dir} + names);
 }
@@ -1075,7 +1092,14 @@ void FileOps::extract(const QString &archive)
     QString prog;
     QStringList args;
     const auto suffix = fi.suffix().toLower();
-    if (!QStandardPaths::findExecutable("bsdtar").isEmpty()) {
+    const auto sevenZip = sevenZipTool();
+    if ((suffix == "rar" || suffix == "7z") && !sevenZip.isEmpty()) {
+        prog = sevenZip; args = {"x", "-y", "-p", "-o" + dest, archive}; // -p vazio: com senha falha em vez de perguntar
+    } else if (suffix == "rar" && !QStandardPaths::findExecutable("unrar").isEmpty()) {
+        prog = "unrar"; args = {"x", "-p-", "-o+", archive, dest + "/"};
+    } else if (suffix == "rar" && !QStandardPaths::findExecutable("unar").isEmpty()) {
+        prog = "unar"; args = {"-q", "-f", "-o", dest, "-D", archive};
+    } else if (!QStandardPaths::findExecutable("bsdtar").isEmpty()) {
         prog = "bsdtar"; args = {"-xf", archive, "-C", dest};
     } else if (suffix == "zip" && !QStandardPaths::findExecutable("unzip").isEmpty()) {
         prog = "unzip"; args = {"-q", archive, "-d", dest};
@@ -1086,7 +1110,9 @@ void FileOps::extract(const QString &archive)
     }
 
     auto *proc = new QProcess(this);
+    proc->setProcessChannelMode(QProcess::MergedChannels);
     connect(proc, &QProcess::finished, this, [this, proc, dest](int code, QProcess::ExitStatus st) {
+        const auto out = QString::fromLocal8Bit(proc->readAll());
         proc->deleteLater();
         setBusy(false);
         if (st == QProcess::NormalExit && code == 0) {
@@ -1094,7 +1120,9 @@ void FileOps::extract(const QString &archive)
             emit finished(QStringLiteral("Extraído em “%1”").arg(QFileInfo(dest).fileName()));
         } else {
             QDir(dest).removeRecursively();
-            emit errorOccurred(QStringLiteral("Falha ao extrair"));
+            const bool password = out.contains("password", Qt::CaseInsensitive) || out.contains("encrypted", Qt::CaseInsensitive);
+            emit errorOccurred(password ? QStringLiteral("Arquivo protegido por senha: extraia pelo terminal ou por outro programa")
+                                        : QStringLiteral("Falha ao extrair"));
         }
     });
     connect(proc, &QProcess::errorOccurred, this, [this, proc, dest](QProcess::ProcessError e) {
@@ -1107,6 +1135,7 @@ void FileOps::extract(const QString &archive)
     });
     setBusy(true, QStringLiteral("Extraindo"));
     proc->start(prog, args);
+    proc->closeWriteChannel(); // nenhum programa fica esperando resposta no terminal
 }
 
 void FileOps::copyText(const QString &text)
