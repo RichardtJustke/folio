@@ -17,7 +17,7 @@
 #include <QtGlobal>
 
 #ifndef FOLIO_VERSION
-#define FOLIO_VERSION "0.20"
+#define FOLIO_VERSION "0.21"
 #endif
 
 Settings::Settings(QObject *parent) : QObject(parent)
@@ -40,6 +40,8 @@ Settings::Settings(QObject *parent) : QObject(parent)
     m_fileIcons = c.value("fileIcons").toString(m_fileIcons);
     m_previewPanel = c.value("previewPanel").toBool(m_previewPanel);
     m_singleWindow = c.value("singleWindow").toBool(m_singleWindow);
+    m_swipe = c.value("swipeNavigation").toBool(m_swipe);
+    m_swipeInvert = c.value("swipeInvert").toBool(m_swipeInvert);
     m_legibility = c.value("legibility").toBool(m_legibility);
     m_reduceMotion = c.value("reduceMotion").toBool(m_reduceMotion);
     m_animSpeed = qBound(0.5, c.value("animationSpeed").toDouble(m_animSpeed), 2.0);
@@ -112,6 +114,8 @@ void Settings::setIconTheme(const QString &v)
 void Settings::setFileIcons(const QString &v) { set(m_fileIcons, v, "fileIcons"); }
 void Settings::setPreviewPanel(bool v) { set(m_previewPanel, v, "previewPanel"); }
 void Settings::setSingleWindow(bool v) { set(m_singleWindow, v, "singleWindow"); }
+void Settings::setSwipeNavigation(bool v) { set(m_swipe, v, "swipeNavigation"); }
+void Settings::setSwipeInvert(bool v) { set(m_swipeInvert, v, "swipeInvert"); }
 
 void Settings::setLegibility(bool v) { set(m_legibility, v, "legibility"); }
 void Settings::setReduceMotion(bool v) { set(m_reduceMotion, v, "reduceMotion"); }

@@ -2,6 +2,11 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.21
+- Gestos do touchpad: deslizar dois dedos para a direita volta, para a esquerda avança, como nos navegadores. Uma bolinha com a seta entra pela borda enquanto os dedos deslizam e fica na cor de destaque quando soltar já vai navegar. A rolagem vertical continua igual, e a vista em colunas segue rolando para o lado.
+- Configurações → Comportamento: "Gestos do touchpad" (ligado por padrão) e "Inverter direção do gesto".
+- Modo de teste: `swipe-right`/`swipe-left` em `FOLIO_KEYS` simulam o gesto.
+
 ## Alpha 0.20
 - Correção: o menu de contexto dos itens não enxergava a seleção no Qt 6.12. As ações (Copiar, Renomear, Propriedades, Mover para a Lixeira…) agiam sobre nada, e as opções de pasta (Abrir em Nova Aba, Colar na Pasta, Abrir Terminal Aqui, Adicionar aos Favoritos) sumiam. O mesmo valia para o "Padrão" de cada tipo nas Configurações.
 - Shift+F10 (ou a tecla Menu) abre o menu de contexto dos itens selecionados.

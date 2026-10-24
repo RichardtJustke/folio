@@ -327,6 +327,16 @@ Rectangle {
                 Toggle { on: Settings.singleWindow; onToggled: v => Settings.singleWindow = v }
             }
             Line {
+                label: "Gestos do touchpad"
+                hint: "Deslizar dois dedos para a direita volta; para a esquerda avança"
+                Toggle { on: Settings.swipeNavigation; onToggled: v => Settings.swipeNavigation = v }
+            }
+            Line {
+                label: "Inverter direção do gesto"
+                hint: "Use se voltar e avançar saírem trocados no seu touchpad"
+                Toggle { on: Settings.swipeInvert; onToggled: v => Settings.swipeInvert = v }
+            }
+            Line {
                 label: "Confirmar antes de excluir permanentemente"
                 Toggle { on: Settings.confirmTrash; onToggled: v => Settings.confirmTrash = v }
             }

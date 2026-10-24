@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
-project(folio VERSION 0.20.0 LANGUAGES CXX)
-set(FOLIO_VERSION_STRING "0.20")
+project(folio VERSION 0.21.0 LANGUAGES CXX)
+set(FOLIO_VERSION_STRING "0.21")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -35,6 +35,7 @@ qt_add_qml_module(folio
         src/Tags.h src/Tags.cpp
         src/QuickFind.h src/QuickFind.cpp
         src/Settings.h src/Settings.cpp
+        src/SwipeGesture.h src/SwipeGesture.cpp
     QML_FILES
         qml/Main.qml
         qml/Theme.qml

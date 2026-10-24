@@ -370,6 +370,44 @@ Window {
             color: Theme.contentBacking
         }
 
+        // dois dedos para o lado no touchpad: direita = voltar, esquerda = avançar
+        SwipeGesture {
+            id: swipe
+            enabled: Settings.swipeNavigation && win.ready && !win.settingsOpen && !quickLook.shown
+                     && !!win.tab && win.tab.fileModel.viewMode !== "column" // colunas rolam para o lado
+            invert: Settings.swipeInvert
+            onProgress: d => swipeHint.distance = d
+            onFinished: d => {
+                swipeHint.distance = 0
+                if (d >= threshold && win.nav.canGoBack) win.nav.back()
+                else if (d <= -threshold && win.nav.canGoForward) win.nav.forward()
+            }
+        }
+
+        Rectangle { // bolinha com a seta que entra pela borda enquanto os dedos deslizam
+            id: swipeHint
+            property real distance: 0
+            readonly property bool back: distance > 0
+            readonly property bool possible: back ? !!win.nav && win.nav.canGoBack : !!win.nav && win.nav.canGoForward
+            readonly property real amount: Math.min(1, Math.abs(distance) / swipe.threshold)
+            z: 20
+            width: 40; height: 40; radius: 20
+            anchors.verticalCenter: paneArea.verticalCenter
+            x: back ? paneArea.x - width + amount * (width + 18) : paneArea.x + paneArea.width - amount * (width + 18)
+            visible: distance !== 0 && possible
+            opacity: 0.35 + 0.65 * amount
+            color: amount >= 1 ? Theme.accent : Theme.menuBg
+            border.color: Theme.border
+            Behavior on color { ColorAnimation { duration: Theme.dur(120) } }
+            Image {
+                anchors.centerIn: parent
+                width: 18; height: 18
+                sourceSize: Qt.size(18, 18)
+                source: Theme.icon(swipeHint.back ? "go-previous-symbolic" : "go-next-symbolic",
+                                   swipeHint.amount >= 1 ? Theme.accentText : Theme.text)
+            }
+        }
+
         Item { // painéis: uma aba, ou duas lado a lado (divisão)
             id: paneArea
             opacity: win.settingsOpen ? 0 : 1 // com Configurações aberta, a vista de arquivos some (não vaza por trás do vidro)

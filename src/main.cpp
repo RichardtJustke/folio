@@ -16,11 +16,27 @@
 #include <QKeyEvent>
 #include <QKeySequence>
 #include <QTimer>
+#include <QWheelEvent>
 
 namespace {
 // Tema de ícones: config.json > tema da plataforma (qt6ct) > gsettings > Adwaita
 // Testes sem tocar na sessão do usuário: QT_QPA_PLATFORM=offscreen FOLIO_SNAPSHOT=/tmp/x.png
 // FOLIO_KEYS="F3,Right,Ctrl+L,/,u,s" — envia as teclas à janela, salva a captura e sai.
+// "swipe-right"/"swipe-left" simulam dois dedos deslizando no touchpad.
+void sendSwipe(QQuickWindow *win, bool right)
+{
+    const QPointF pos(win->width() / 2.0, win->height() / 2.0);
+    const auto send = [&](Qt::ScrollPhase phase, qreal dx) {
+        QWheelEvent e(pos, win->mapToGlobal(pos), QPoint(qRound(dx), 0), QPoint(qRound(dx * 4), 0),
+                      Qt::NoButton, Qt::NoModifier, phase, false);
+        QGuiApplication::sendEvent(win, &e);
+    };
+    send(Qt::ScrollBegin, 0);
+    for (int i = 0; i < 10; ++i)
+        send(Qt::ScrollUpdate, right ? -20 : 20); // pixelDelta segue o conteúdo, ao contrário dos dedos
+    send(Qt::ScrollEnd, 0);
+}
+
 void runSnapshot(QQmlApplicationEngine &engine)
 {
     const auto out = qEnvironmentVariable("FOLIO_SNAPSHOT");
@@ -32,6 +48,8 @@ void runSnapshot(QQmlApplicationEngine &engine)
     const auto keys = qEnvironmentVariable("FOLIO_KEYS").split(',', Qt::SkipEmptyParts);
     for (int i = 0; i < keys.size(); ++i) {
         QTimer::singleShot(1500 + i * 250, win, [win, key = keys.at(i)] {
+            if (key.startsWith("swipe-"))
+                return sendSwipe(win, key == "swipe-right");
             const auto combo = QKeySequence(key == "comma" ? QStringLiteral(",") : key)[0];
             const auto text = combo.keyboardModifiers() & ~Qt::ShiftModifier ? QString()
                             : key.size() == 1 ? key : QString();
