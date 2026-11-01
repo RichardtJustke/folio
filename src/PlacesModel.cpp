@@ -332,17 +332,23 @@ void PlacesModel::removeSmartFolder(const QString &query)
 QVariantList PlacesModel::drives() const
 {
     QVariantList out;
+    QSet<QByteArray> seen;
     const auto add = [&](const QString &name, const QString &path, const QString &icon) {
         const QStorageInfo si(path);
         if (!si.isValid() || !si.isReady() || si.bytesTotal() <= 0)
             return;
+        // compara o dispositivo, não o ponto de montagem: subvolumes btrfs e bind mounts
+        // têm raízes diferentes, mas são o mesmo disco e o mesmo espaço livre
+        const auto device = si.device();
+        if (!device.isEmpty() && seen.contains(device))
+            return;
+        seen.insert(device);
         out.append(QVariantMap{{"name", name}, {"path", path}, {"icon", icon},
                                {"free", si.bytesAvailable()}, {"total", si.bytesTotal()}});
     };
     add(QStringLiteral("Sistema"), QStringLiteral("/"), QStringLiteral("drive-harddisk-symbolic"));
     // /home em partição própria também conta
-    if (QStorageInfo(QDir::homePath()).rootPath() != QStorageInfo(QStringLiteral("/")).rootPath())
-        add(QStringLiteral("Pasta pessoal"), QDir::homePath(), QStringLiteral("user-home-symbolic"));
+    add(QStringLiteral("Pasta pessoal"), QDir::homePath(), QStringLiteral("user-home-symbolic"));
     for (const auto &p : m_places) {
         if (p.type == QLatin1String("volume") || (!p.device.isEmpty() && p.group == QLatin1String("Locais")))
             add(p.name, p.path, p.icon);

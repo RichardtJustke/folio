@@ -2,6 +2,9 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.33
+- Correção: em Discos, na página Início, um mesmo disco aparecia duas vezes ("Sistema" e "Pasta pessoal") quando `/` e `/home` eram subvolumes da mesma partição btrfs. Agora o Folio compara o dispositivo, e `/home` só ganha cartão próprio em partição separada.
+
 ## Alpha 0.32
 - Arquivos **.rar** e **.7z** pelo `7z` (p7zip/7-Zip): entrar no arquivo lista todas as versões (RAR5 inclusive) com tamanho, data e tipo de cada item; "Extrair Aqui" usa o `7z` (ou `unrar`/`unar`, se instalados).
 - Arquivos protegidos por senha avisam "Arquivo protegido por senha" em vez de ficar esperando a senha num terminal invisível.
