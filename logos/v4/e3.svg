@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><defs>
+<linearGradient id="back" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e3ecff"/><stop offset="1" stop-color="#c3d4fb"/></linearGradient>
+<linearGradient id="mid" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#3d5af0"/></linearGradient>
+<linearGradient id="deep" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5b86ff"/><stop offset=".55" stop-color="#2a3fe0"/><stop offset="1" stop-color="#1c26b8"/></linearGradient>
+<linearGradient id="front" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3f63f0"/><stop offset=".6" stop-color="#6c8cf5"/><stop offset="1" stop-color="#cdd9fb"/></linearGradient>
+<linearGradient id="flap" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#b9caf9"/></linearGradient>
+</defs><g id="icon"><rect x="116" y="74" width="104" height="52" rx="18" fill="url(#back)"/><rect x="100" y="100" width="312" height="200" rx="30" fill="url(#back)"/><rect x="204" y="132" width="104" height="52" rx="18" fill="url(#mid)"/><rect x="100" y="158" width="312" height="200" rx="30" fill="url(#mid)"/><rect x="292" y="190" width="104" height="52" rx="18" fill="url(#deep)"/><rect x="100" y="216" width="312" height="200" rx="30" fill="url(#deep)"/><rect x="100" y="274" width="312" height="160" rx="30" fill="url(#front)"/><circle cx="150" cy="326" r="15" fill="#fff"/></g></svg>
