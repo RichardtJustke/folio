@@ -180,7 +180,7 @@ void GitRepo::refresh()
         ++m_revision;
         emit stateChanged();
     });
-    watcher->setFuture(QtConcurrent::run(read, m_path));
+    watcher->setFuture(QtConcurrent::run([path = m_path] { return read(path); }));
 }
 
 QString GitRepo::statusOf(const QString &absPath) const
