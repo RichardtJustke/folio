@@ -28,7 +28,7 @@ Item {
     Row {
         anchors.fill: parent
         anchors.leftMargin: 8
-        opacity: interaction.dragging ? 0.4 : root.entry.isHidden ? 0.55 : 1
+        opacity: interaction.dragging ? 0.4 : root.view.ops.cutPaths.includes(root.entry.path) ? 0.45 : root.entry.isHidden ? 0.55 : 1
         Behavior on opacity { NumberAnimation { duration: Theme.dur(120) } }
 
         Item {

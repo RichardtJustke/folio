@@ -62,6 +62,12 @@ xdg-mime default folio.desktop inode/directory   # opcional: gerenciador padrão
 busctl --user call org.freedesktop.DBus / org.freedesktop.DBus ReloadConfig   # aplica sem relogar
 ```
 
+Para atualizar depois de mudanças (compila, instala em `~/.local`, recarrega o D-Bus e reinicia o seletor de arquivos se ele estiver ligado):
+
+```sh
+./atualizar.sh
+```
+
 Ou como pacote: `makepkg -si` na raiz do projeto.
 
 ## Hyprland

@@ -30,11 +30,11 @@ Window {
         const explicitPath = Qt.application.arguments.slice(1).some(a => !a.startsWith("--"))
         const savedTabs = Settings.savedTabs
         let active = 0
-        if (!explicitPath && savedTabs) {
+        if (!explicitPath && Settings.restoreSession && savedTabs) {
             for (const t of savedTabs) {
                 if (!t.path) continue
                 if (t.active) active = tabs.count
-                tabs.append({ startPath: t.path, revealPath: "", title: t.title || "" })
+                tabs.append({ startPath: t.path, path: t.path, revealPath: "", title: t.title || "" })
             }
         }
         if (tabs.count > 0) selectTab(active)
@@ -48,7 +48,8 @@ Window {
         const tabState = []
         for (let i = 0; i < tabs.count; i++) {
             const t = tabs.get(i)
-            tabState.push({ path: t.startPath, reveal: t.revealPath || "", title: t.title || "", active: i === currentTab })
+            // a pasta onde a aba está agora, não a que ela abriu
+            tabState.push({ path: t.path || t.startPath, reveal: t.revealPath || "", title: t.title || "", active: i === currentTab })
         }
         Settings.savedTabs = tabState
     }
@@ -116,7 +117,7 @@ Window {
     function zoom(delta) { Settings.iconSize = Settings.iconSize + delta }
 
     // ── abas ──
-    ListModel { id: tabs } // { startPath, revealPath, title }
+    ListModel { id: tabs } // { startPath, path (atual), revealPath, title }
     property int currentTab: 0
     // itemAt() ainda retorna null durante itemAdded; guardamos as abas a partir dos sinais
     property var tabItems: []
@@ -141,7 +142,7 @@ Window {
     }
 
     function newTab(path, reveal) {
-        tabs.append({ startPath: path, revealPath: reveal ?? "", title: "" })
+        tabs.append({ startPath: path, path: path, revealPath: reveal ?? "", title: "" })
         selectTab(tabs.count - 1)
     }
 
@@ -161,7 +162,7 @@ Window {
         settingsOpen = false
         if (split) { splitLeft = -1; splitRight = -1; return }
         const cur = currentTab
-        if (tabs.count < 2) tabs.append({ startPath: fm ? fm.path : fileOps.startPath(), revealPath: "", title: "" })
+        if (tabs.count < 2) tabs.append({ startPath: fm ? fm.path : fileOps.startPath(), path: fm ? fm.path : fileOps.startPath(), revealPath: "", title: "" })
         const other = cur === tabs.count - 1 ? cur - 1 : cur + 1
         splitLeft = Math.min(cur, other)
         splitRight = Math.max(cur, other)
@@ -543,12 +544,21 @@ Window {
                     ops: fileOps
                     places: placesModel
                     onOpenInNewTab: path => win.newTab(path)
-                    onTitleUpdated: (i, title) => { if (i < tabs.count) tabs.setProperty(i, "title", title) }
+                    onTitleUpdated: (i, title) => {
+                        if (i >= tabs.count) return
+                        tabs.setProperty(i, "title", title)
+                        tabs.setProperty(i, "path", fileModel.path)
+                    }
                     onRequestDelete: (paths, permanent) => win.requestDelete(paths, permanent)
                     onRequestEmptyTrash: win.requestEmptyTrash()
                     onQuickLook: win.openQuickLook()
                     onShowProperties: paths => win.showProperties(paths)
-                    onOpenWith: path => openWithDialog.show(path)
+                    onOpenWith: paths => openWithDialog.show(paths)
+                    onFlyInto: (items, x, y, target) => fx.fly(items, x, y, () => { if (target) target.pop(0) })
+                    onTransferTo: (paths, move) => folderPicker.ask(move ? "Mover " + paths.length + (paths.length === 1 ? " item" : " itens") + " para…"
+                                                                        : "Copiar " + paths.length + (paths.length === 1 ? " item" : " itens") + " para…",
+                                                                   move ? "Mover" : "Copiar", fileModel.path,
+                                                                   dest => fileOps.transfer(paths, dest, move))
                     onRenameMany: paths => batchRename.show(paths)
                     onPromptSelectPattern: win.promptSelectPattern()
 
@@ -666,11 +676,12 @@ Window {
     CloudDialog { id: cloudDialog; cloud: cloud; ops: fileOps }
     PropertiesDialog { id: propertiesDialog; ops: fileOps }
     OpenWithDialog { id: openWithDialog; ops: fileOps }
+    FolderPickerDialog { id: folderPicker; ops: fileOps }
 
     // ── atalhos (desativados durante edição de texto/diálogos) ──
-    readonly property bool typing: (fm && fm.renamingPath !== "") || (header.search !== null && header.search.active)
+    readonly property bool typing: (fm && fm.renamingPath !== "") || (header.search !== null && header.search.typing)
                                    || confirmDialog.opened || conflictDialog.opened || promptDialog.opened
-                                   || propertiesDialog.opened || openWithDialog.opened || connectDialog.opened || settingsOpen
+                                   || propertiesDialog.opened || openWithDialog.opened || folderPicker.opened || connectDialog.opened || settingsOpen
     readonly property bool ready: fm !== null && !typing
     readonly property bool inRepo: !!tab && tab.git.active && !tab.git.busy
     readonly property bool writable: ready && !fm.isTrash && !fm.path.startsWith("folio:") // pasta de verdade (colar, criar)

@@ -24,8 +24,8 @@ Item {
         y: root.glyphOnly ? (root.height - height) / 2 : root.height * 0.47
         width: root.width * (root.glyphOnly ? 0.5 : 0.3); height: width
         sourceSize: Qt.size(width * 2, height * 2)
-        source: root.glyph ? Theme.icon(root.glyph, root.glyphOnly ? Qt.lighter(Settings.accent, Theme.light ? 1.0 : 1.35)
-                                                                    : Qt.darker(Settings.accent, 1.6)) : ""
+        source: root.glyph ? Theme.icon(root.glyph, root.glyphOnly ? Qt.lighter(Theme.folderHex, Theme.light ? 1.0 : 1.35)
+                                                                    : Qt.darker(Theme.folderHex, 1.6)) : ""
         opacity: root.glyphOnly ? 1 : 0.8
     }
 }

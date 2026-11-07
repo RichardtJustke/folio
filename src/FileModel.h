@@ -39,6 +39,9 @@ class FileModel : public QObject
     Q_PROPERTY(int selectedCount READ selectedCount NOTIFY selectionChanged)
     Q_PROPERTY(int currentIndex READ currentIndex WRITE setCurrentIndex NOTIFY currentIndexChanged)
     Q_PROPERTY(QString renamingPath READ renamingPath WRITE setRenamingPath NOTIFY renamingPathChanged)
+    // seletor de arquivos: só mostra pastas e arquivos que batem ("*.png" ou "mime:image/*"); vazio = tudo
+    Q_PROPERTY(QStringList nameFilters READ nameFilters WRITE setNameFilters NOTIFY filtersChanged)
+    Q_PROPERTY(bool dirsOnly READ dirsOnly WRITE setDirsOnly NOTIFY filtersChanged)
 
 public:
     explicit FileModel(QObject *parent = nullptr);
@@ -48,6 +51,10 @@ public:
     void setPath(const QString &path);
     QString title() const;
     bool isTrash() const;
+    QStringList nameFilters() const { return m_nameFilters; }
+    void setNameFilters(const QStringList &v);
+    bool dirsOnly() const { return m_dirsOnly; }
+    void setDirsOnly(bool v);
     bool showHidden() const { return m_showHidden; }
     void setShowHidden(bool v);
     bool showExtensions() const { return m_showExtensions; }
@@ -99,6 +106,7 @@ public:
     Q_INVOKABLE int freshIndex(const QString &path) const { return m_fresh.value(path, -1); }
 
 signals:
+    void filtersChanged();
     void pathChanged();
     void showHiddenChanged();
     void showExtensionsChanged();
@@ -152,4 +160,7 @@ private:
     bool m_sortDesc = false;
     bool m_recursive = false;
     bool m_loading = false;
+    bool m_dirsOnly = false;
+    QStringList m_nameFilters;
+    bool passesFilters(const FileEntry &e) const;
 };

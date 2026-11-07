@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
-project(folio VERSION 0.33.0 LANGUAGES CXX)
-set(FOLIO_VERSION_STRING "0.33")
+project(folio VERSION 0.36.0 LANGUAGES CXX)
+set(FOLIO_VERSION_STRING "0.36")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -14,6 +14,7 @@ qt_add_executable(folio
     src/IconProvider.h src/IconProvider.cpp
     src/Thumbnailer.h src/Thumbnailer.cpp
     src/FileManager1.h src/FileManager1.cpp
+    src/FileChooserPortal.h src/FileChooserPortal.cpp
 )
 
 set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
@@ -47,6 +48,8 @@ qt_add_qml_module(folio
         qml/components/SettingsPage.qml
         qml/components/PropertiesDialog.qml
         qml/components/OpenWithDialog.qml
+        qml/components/FolderPickerDialog.qml
+        qml/FilePicker.qml
         qml/components/PromptDialog.qml
         qml/components/ConnectDialog.qml
         qml/components/ListPickerDialog.qml
@@ -117,5 +120,13 @@ install(CODE "
         message(STATUS \"Installing: \${_service}\")
         file(WRITE \"\${_service}\" \"[D-BUS Service]\\nName=org.freedesktop.FileManager1\\nExec=\${_prefix}/${CMAKE_INSTALL_BINDIR}/folio --dbus-service\\n\")
     endif()
+")
+# Seletor de arquivos ("Abrir"/"Salvar como" dos apps) pelo xdg-desktop-portal: o serviço D-Bus
+# e o .portal. Ativar: Configurações → Comportamento → "Usar o Folio para abrir e salvar arquivos".
+install(FILES dist/folio.portal DESTINATION ${CMAKE_INSTALL_DATADIR}/xdg-desktop-portal/portals)
+install(CODE "
+    set(_service \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/dbus-1/services/org.freedesktop.impl.portal.desktop.folio.service\")
+    message(STATUS \"Installing: \${_service}\")
+    file(WRITE \"\${_service}\" \"[D-BUS Service]\\nName=org.freedesktop.impl.portal.desktop.folio\\nExec=\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/folio --portal\\n\")
 ")
 install(FILES assets/folio.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)

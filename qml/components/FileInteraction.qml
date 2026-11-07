@@ -123,13 +123,23 @@ Item {
         Drag.dragType: Drag.Automatic
         Drag.supportedActions: Qt.CopyAction | Qt.MoveAction
         Drag.proposedAction: Qt.MoveAction
-        Drag.onDragFinished: { proxy.x = 0; proxy.y = 0 }
+        Drag.onDragFinished: root.resetDrag()
+    }
+
+    // o arraste nativo (Drag.Automatic) roda num laço próprio: o MouseArea não recebe o "soltar"
+    // e ficaria preso em pressed/drag.active, com o item esmaecido. Desligar e religar zera tudo.
+    function resetDrag() {
+        proxy.Drag.active = false
+        proxy.x = 0
+        proxy.y = 0
+        mouse.enabled = false
+        mouse.enabled = Qt.binding(() => root.active)
     }
 
     Connections {
         target: mouse.drag
         function onActiveChanged() {
-            if (!mouse.drag.active) return
+            if (!mouse.drag.active) { if (!proxy.Drag.active) { proxy.x = 0; proxy.y = 0 } return }
             mouse.collapseOnRelease = false
             const paths = root.view.fileModel.selectedPaths()
             proxy.Drag.mimeData = { "text/uri-list": root.view.ops.uriList(paths) }
@@ -146,6 +156,6 @@ Item {
         id: drop
         anchors.fill: parent
         enabled: root.entry.isDir
-        onDropped: d => root.view.handleDrop(d, root.entry.path)
+        onDropped: d => root.view.handleDrop(d, root.entry.path, root)
     }
 }

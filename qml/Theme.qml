@@ -33,6 +33,7 @@ QtObject {
         : light ? Qt.rgba(1, 1, 1, 0.55 * (1.05 - Settings.backgroundOpacity))
                 : Qt.rgba(0, 0, 0, 0.45 * (1.05 - Settings.backgroundOpacity))
     readonly property color accent: Settings.accent
+    readonly property string folderHex: Settings.folderColor || Settings.accent // cor das pastas
     readonly property color accentSoft: Qt.lighter(Settings.accent, 1.1)
     readonly property color accentGlow: tint(Settings.accent, 0.25)
     readonly property color info: Qt.lighter(Settings.accent, 1.25)
@@ -100,7 +101,7 @@ QtObject {
         const dot = fileName ? fileName.lastIndexOf(".") : -1
         const ext = dot > 0 ? fileName.slice(dot + 1) : ""
         return "image://fileicon/" + Settings.fileIcons + "/" + names + "?ext=" + encodeURIComponent(ext)
-            + "&accent=" + Settings.accent.slice(1) + "&light=" + (light ? 1 : 0) + (tileOnly ? "&tile=1" : "")
+            + "&accent=" + (names.startsWith("folder") ? folderHex : Settings.accent).slice(1) + "&light=" + (light ? 1 : 0) + (tileOnly ? "&tile=1" : "")
     }
 
     // estado do Git de um arquivo (Folio: GitRepo.statusOf)

@@ -17,7 +17,7 @@ Item {
         Behavior on y { NumberAnimation { duration: Theme.dur(120); easing.type: Easing.OutQuad } }
         width: parent.width - 8
         spacing: 4
-        opacity: interaction.dragging ? 0.4 : root.entry.isHidden ? 0.55 : 1
+        opacity: interaction.dragging ? 0.4 : root.view.ops.cutPaths.includes(root.entry.path) ? 0.45 : root.entry.isHidden ? 0.55 : 1
         Behavior on opacity { NumberAnimation { duration: Theme.dur(120) } }
 
         Rectangle { // destaque atrás do ícone

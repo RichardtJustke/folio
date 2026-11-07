@@ -9,6 +9,8 @@
 #include <QDir>
 #include <QDirIterator>
 #include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QFutureWatcher>
 #include <QGuiApplication>
 #include <QMimeData>
@@ -205,7 +207,11 @@ QString trashInfoFor(const QString &trashedFile)
 
 FileOps::FileOps(QObject *parent) : QObject(parent)
 {
-    connect(QGuiApplication::clipboard(), &QClipboard::dataChanged, this, &FileOps::canPasteChanged);
+    connect(QGuiApplication::clipboard(), &QClipboard::dataChanged, this, [this] {
+        readCut();
+        emit canPasteChanged();
+    });
+    readCut();
 }
 
 QString FileOps::startPath() const
@@ -221,7 +227,7 @@ QString FileOps::startPath() const
         if (fi.exists())
             return fi.absolutePath();
     }
-    return QDir::homePath();
+    return QStringLiteral("folio:home"); // sem caminho: a página Início
 }
 
 QString FileOps::startReveal() const
@@ -283,6 +289,20 @@ void FileOps::copy(const QStringList &paths)
 void FileOps::cut(const QStringList &paths)
 {
     setClipboard(paths, true);
+}
+
+// caminhos recortados (x-special/gnome-copied-files começando com "cut"), de qualquer gerenciador
+void FileOps::readCut()
+{
+    m_cutPaths.clear();
+    const auto *md = QGuiApplication::clipboard()->mimeData();
+    if (!md || !md->hasFormat(kGnomeCopied))
+        return;
+    auto lines = QString::fromUtf8(md->data(kGnomeCopied)).split('\n', Qt::SkipEmptyParts);
+    if (lines.isEmpty() || lines.takeFirst().trimmed() != "cut")
+        return;
+    for (const auto &l : lines)
+        m_cutPaths << QUrl(l.trimmed()).toLocalFile();
 }
 
 void FileOps::setClipboard(const QStringList &paths, bool cut)
@@ -876,10 +896,46 @@ QList<DesktopApp> scanApps()
     return apps;
 }
 
+QList<DesktopApp> &appCache()
+{
+    static QList<DesktopApp> cache = scanApps();
+    return cache;
+}
+
 const QList<DesktopApp> &apps()
 {
-    static const QList<DesktopApp> cache = scanApps();
-    return cache;
+    return appCache();
+}
+
+const DesktopApp *findApp(const QString &id)
+{
+    for (const auto &a : apps())
+        if (a.id == id)
+            return &a;
+    return nullptr;
+}
+
+// %F/%U recebem todos os arquivos; %f/%u (ou nenhum código) abrem uma instância por arquivo
+QList<QStringList> expandExecMany(const QString &exec, const QStringList &paths)
+{
+    QList<QStringList> runs;
+    const bool many = exec.contains("%F") || exec.contains("%U");
+    const bool one = exec.contains("%f") || exec.contains("%u");
+    if (many || paths.size() <= 1) {
+        QStringList out;
+        for (auto tok : QProcess::splitCommand(exec)) {
+            if (tok == "%F" || tok == "%U" || tok == "%f" || tok == "%u") out << paths;
+            else if (tok.size() == 2 && tok[0] == '%' && QStringLiteral("ickdDnNvm").contains(tok[1])) continue;
+            else out << tok.replace("%%", "%");
+        }
+        if (!many && !one)
+            out << paths;
+        runs << out;
+        return runs;
+    }
+    for (const auto &p : paths)
+        runs << expandExecMany(exec, {p});
+    return runs;
 }
 
 QStringList expandExec(const QString &exec, const QString &path)
@@ -1205,17 +1261,365 @@ bool FileOps::setDefaultApp(const QString &mime, const QString &appId)
 
 void FileOps::openWith(const QString &path, const QString &appId)
 {
-    for (const auto &a : apps()) {
-        if (a.id != appId)
-            continue;
-        auto args = expandExec(a.exec, path);
-        if (args.isEmpty())
-            return;
-        const auto prog = args.takeFirst();
-        QProcess::startDetached(prog, args);
+    openWithMany({path}, appId);
+}
+
+void FileOps::openWithMany(const QStringList &paths, const QString &appId)
+{
+    const auto *a = findApp(appId);
+    if (!a) {
+        emit errorOccurred(QStringLiteral("Aplicativo não encontrado"));
         return;
     }
-    emit errorOccurred(QStringLiteral("Aplicativo não encontrado"));
+    for (auto args : expandExecMany(a->exec, paths)) {
+        if (args.isEmpty())
+            continue;
+        const auto prog = args.takeFirst();
+        if (!QProcess::startDetached(prog, args))
+            emit errorOccurred(QStringLiteral("Não foi possível abrir “%1”").arg(a->name));
+    }
+}
+
+QVariantList FileOps::allApps() const
+{
+    QVariantList out;
+    for (const auto &a : apps())
+        out.append(QVariantMap{{"name", a.name}, {"id", a.id}, {"icon", a.icon}});
+    std::sort(out.begin(), out.end(), [](const QVariant &x, const QVariant &y) {
+        return x.toMap().value("name").toString().localeAwareCompare(y.toMap().value("name").toString()) < 0;
+    });
+    return out;
+}
+
+void FileOps::reloadApps()
+{
+    appCache() = scanApps();
+}
+
+// Programa sem atalho (AppImage, binário, script, comando): cria ~/.local/share/applications/folio-<nome>.desktop
+QString FileOps::addCustomApp(const QString &name, const QString &command)
+{
+    auto cmd = command.trimmed();
+    const auto title = name.trimmed();
+    if (cmd.isEmpty() || title.isEmpty())
+        return {};
+    // caminho para um arquivo: vira absoluto, entre aspas, e executável (AppImage baixado vem sem +x)
+    const QFileInfo fi(Config::expand(cmd.startsWith("file://") ? QUrl(cmd).toLocalFile() : cmd));
+    if (fi.isFile()) {
+        if (!fi.isExecutable())
+            QFile::setPermissions(fi.absoluteFilePath(), QFile(fi.absoluteFilePath()).permissions()
+                                  | QFileDevice::ExeOwner | QFileDevice::ExeUser);
+        cmd = '"' + fi.absoluteFilePath() + '"';
+    }
+    if (!cmd.contains(QRegularExpression("%[fFuU]")))
+        cmd += " %F";
+
+    auto slug = title.toLower();
+    slug.replace(QRegularExpression("[^a-z0-9]+"), "-");
+    slug = slug.remove(QRegularExpression("^-+|-+$"));
+    if (slug.isEmpty())
+        slug = "app";
+    const auto dir = QStandardPaths::writableLocation(QStandardPaths::ApplicationsLocation);
+    QDir().mkpath(dir);
+    auto id = "folio-" + slug + ".desktop";
+    for (int i = 2; QFile::exists(dir + "/" + id); ++i)
+        id = QStringLiteral("folio-%1-%2.desktop").arg(slug).arg(i);
+
+    QSaveFile f(dir + "/" + id);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        emit errorOccurred(QStringLiteral("Não foi possível criar o atalho do aplicativo"));
+        return {};
+    }
+    f.write(QStringLiteral("[Desktop Entry]\nType=Application\nName=%1\nExec=%2\nIcon=application-x-executable\n"
+                           "Terminal=false\nNoDisplay=false\nComment=Criado pelo Folio\n")
+                .arg(title, cmd)
+                .toUtf8());
+    if (!f.commit()) {
+        emit errorOccurred(QStringLiteral("Não foi possível criar o atalho do aplicativo"));
+        return {};
+    }
+    QProcess::execute("update-desktop-database", {dir});
+    reloadApps();
+    return id;
+}
+
+QVariantMap FileOps::mimeInfo(const QString &pathOrExt) const
+{
+    QMimeDatabase db;
+    auto s = pathOrExt.trimmed();
+    QMimeType m;
+    if (s.contains('/') && !s.startsWith('/') && !s.startsWith('~'))
+        m = db.mimeTypeForName(s);
+    if (!m.isValid()) {
+        if (s.startsWith('.')) s.remove(0, 1);
+        m = s.contains('/') ? db.mimeTypeForFile(Config::expand(s)) : db.mimeTypeForFile("x." + s, QMimeDatabase::MatchExtension);
+    }
+    if (!m.isValid() || m.isDefault())
+        return {};
+    return {{"mime", m.name()}, {"label", m.comment()}, {"suffix", m.preferredSuffix()}};
+}
+
+bool FileOps::canRun(const QString &path) const
+{
+    const QFileInfo fi(path);
+    if (!fi.isFile())
+        return false;
+    if (fi.suffix().compare("AppImage", Qt::CaseInsensitive) == 0)
+        return true;
+    const auto mime = QMimeDatabase().mimeTypeForFile(fi);
+    const bool program = mime.inherits("application/x-executable") || mime.inherits("application/x-sharedlib")
+                      || mime.inherits("application/x-pie-executable") || mime.inherits("application/x-shellscript")
+                      || mime.inherits("text/x-python") || mime.inherits("application/x-perl");
+    return program || (fi.isExecutable() && !mime.inherits("text/plain"));
+}
+
+void FileOps::run(const QString &path)
+{
+    const QFileInfo fi(path);
+    if (!fi.isExecutable() && !QFile::setPermissions(path, QFile(path).permissions() | QFileDevice::ExeOwner | QFileDevice::ExeUser)) {
+        emit errorOccurred(QStringLiteral("Sem permissão para executar “%1”").arg(fi.fileName()));
+        return;
+    }
+    // scripts rodam no terminal (para ver a saída); programas, soltos
+    const auto mime = QMimeDatabase().mimeTypeForFile(fi);
+    const bool script = mime.inherits("text/plain") || mime.inherits("application/x-shellscript");
+    if (script) {
+        auto args = QProcess::splitCommand(Config::terminal());
+        if (!args.isEmpty()) {
+            const auto prog = args.takeFirst();
+            args << "-e" << "sh" << "-c" << "\"$1\"; echo; read -r -p '[Enter para fechar] ' _" << "sh" << fi.absoluteFilePath();
+            QProcess::startDetached(prog, args, fi.absolutePath());
+            return;
+        }
+    }
+    if (!QProcess::startDetached(fi.absoluteFilePath(), {}, fi.absolutePath()))
+        emit errorOccurred(QStringLiteral("Não foi possível executar “%1”").arg(fi.fileName()));
+}
+
+// Pasta: outra janela do Folio como root. Arquivo: o app padrão dele como root. Senha pelo polkit.
+void FileOps::openAsAdmin(const QString &path)
+{
+    if (QStandardPaths::findExecutable("pkexec").isEmpty()) {
+        emit errorOccurred(QStringLiteral("pkexec não encontrado (instale o polkit)"));
+        return;
+    }
+    QStringList env{"env"};
+    for (const char *var : {"DISPLAY", "WAYLAND_DISPLAY", "XDG_RUNTIME_DIR", "XAUTHORITY", "XDG_CURRENT_DESKTOP",
+                            "QT_QPA_PLATFORMTHEME", "QT_QPA_PLATFORM", "XDG_SESSION_TYPE", "DBUS_SESSION_BUS_ADDRESS"})
+        if (qEnvironmentVariableIsSet(var))
+            env << QStringLiteral("%1=%2").arg(QLatin1String(var), qEnvironmentVariable(var));
+    QStringList cmd;
+    const QFileInfo fi(path);
+    if (fi.isDir()) {
+        cmd << QCoreApplication::applicationFilePath() << "--new-window" << fi.absoluteFilePath();
+    } else {
+        const auto *a = findApp(defaultAppId(QMimeDatabase().mimeTypeForFile(fi).name()));
+        if (!a) {
+            emit errorOccurred(QStringLiteral("Nenhum aplicativo padrão para este tipo de arquivo"));
+            return;
+        }
+        cmd = expandExec(a->exec, fi.absoluteFilePath());
+    }
+    if (!QProcess::startDetached("pkexec", env + cmd))
+        emit errorOccurred(QStringLiteral("Não foi possível pedir permissão de administrador"));
+}
+
+namespace {
+// O xdg-desktop-portal só procura .portal em /usr/share/xdg-desktop-portal/portals (ou em
+// $XDG_DESKTOP_PORTAL_DIR). Sem o pacote instalado em /usr, o Folio monta uma pasta própria com
+// links para os .portal do sistema + o dele e aponta o serviço para ela (drop-in do systemd).
+const QString kSysPortals = QStringLiteral("/usr/share/xdg-desktop-portal/portals");
+
+QString portalConfPath()
+{
+    auto desk = qEnvironmentVariable("XDG_CURRENT_DESKTOP").section(':', 0, 0).toLower();
+    if (desk.isEmpty())
+        desk = QStringLiteral("hyprland");
+    return QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + "/xdg-desktop-portal/" + desk + "-portals.conf";
+}
+
+QString portalDropIn()
+{
+    return QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + "/systemd/user/xdg-desktop-portal.service.d/folio.conf";
+}
+
+QString dataHome()
+{
+    return QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+}
+
+bool writeText(const QString &path, const QString &text)
+{
+    QDir().mkpath(QFileInfo(path).absolutePath());
+    QSaveFile f(path);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Text))
+        return false;
+    f.write(text.toUtf8());
+    return f.commit();
+}
+
+// linhas do [preferred] sem a do FileChooser; começa do arquivo do usuário ou do sistema
+QStringList portalConfLines()
+{
+    QFile f(portalConfPath());
+    if (!f.exists())
+        f.setFileName("/usr/share/xdg-desktop-portal/" + QFileInfo(portalConfPath()).fileName());
+    QStringList lines;
+    if (f.open(QIODevice::ReadOnly | QIODevice::Text))
+        lines = QString::fromUtf8(f.readAll()).split('\n');
+    lines.removeIf([](const QString &l) { return l.trimmed().startsWith("org.freedesktop.impl.portal.FileChooser"); });
+    while (!lines.isEmpty() && lines.last().trimmed().isEmpty())
+        lines.removeLast();
+    if (!lines.contains("[preferred]"))
+        lines.prepend("[preferred]");
+    return lines;
+}
+}
+
+bool FileOps::portalEnabled() const
+{
+    QFile f(portalConfPath());
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
+        return false;
+    return QString::fromUtf8(f.readAll()).contains(QRegularExpression("^org\\.freedesktop\\.impl\\.portal\\.FileChooser\\s*=\\s*folio", QRegularExpression::MultilineOption));
+}
+
+bool FileOps::setPortalEnabled(bool on)
+{
+    const auto service = dataHome() + "/dbus-1/services/org.freedesktop.impl.portal.desktop.folio.service";
+    const auto ownDir = dataHome() + "/folio/portals";
+    auto lines = portalConfLines();
+    bool ok = true;
+    if (on) {
+        ok &= writeText(service, QStringLiteral("[D-BUS Service]\nName=org.freedesktop.impl.portal.desktop.folio\nExec=%1 --portal\n")
+                                     .arg(qEnvironmentVariable("APPIMAGE", QCoreApplication::applicationFilePath()))); // AppImage: o caminho montado muda a cada execução
+        if (!QFile::exists(kSysPortals + "/folio.portal")) {
+            QDir(ownDir).removeRecursively();
+            QDir().mkpath(ownDir);
+            for (const auto &name : QDir(kSysPortals).entryList({"*.portal"}, QDir::Files))
+                QFile::link(kSysPortals + "/" + name, ownDir + "/" + name);
+            ok &= writeText(ownDir + "/folio.portal", QStringLiteral("[portal]\nDBusName=org.freedesktop.impl.portal.desktop.folio\n"
+                                                                     "Interfaces=org.freedesktop.impl.portal.FileChooser;\n"));
+            ok &= writeText(portalDropIn(), QStringLiteral("# criado pelo Folio (Configurações → Comportamento)\n[Service]\n"
+                                                           "Environment=XDG_DESKTOP_PORTAL_DIR=%1\n").arg(ownDir));
+        }
+        const auto i = lines.indexOf("[preferred]");
+        lines.insert(i + 1, "org.freedesktop.impl.portal.FileChooser=folio");
+    } else {
+        QFile::remove(portalDropIn());
+        QDir(ownDir).removeRecursively();
+    }
+    ok &= writeText(portalConfPath(), lines.join('\n') + '\n');
+    // com XDG_DESKTOP_PORTAL_DIR definido, o portal lê o *-portals.conf só dessa pasta
+    if (on && QDir(ownDir).exists())
+        ok &= writeText(ownDir + "/" + QFileInfo(portalConfPath()).fileName(), lines.join('\n') + '\n');
+    QProcess::execute("systemctl", {"--user", "daemon-reload"});
+    QProcess::execute("systemctl", {"--user", "restart", "xdg-desktop-portal.service"});
+    if (!ok)
+        emit errorOccurred(QStringLiteral("Não foi possível configurar o seletor de arquivos"));
+    return ok && portalEnabled() == on;
+}
+
+QVariantList FileOps::subdirs(const QString &dir, bool hidden) const
+{
+    QVariantList out;
+    QDir d(Config::expand(dir));
+    auto filters = QDir::Dirs | QDir::NoDotAndDotDot;
+    if (hidden)
+        filters |= QDir::Hidden;
+    auto names = d.entryList(filters);
+    std::sort(names.begin(), names.end(), [](const QString &a, const QString &b) { return a.localeAwareCompare(b) < 0; });
+    for (const auto &n : names)
+        out.append(QVariantMap{{"name", n}, {"path", d.absoluteFilePath(n)}});
+    return out;
+}
+
+QVariantList FileOps::quickDirs() const
+{
+    QVariantList out;
+    QStringList seen;
+    const auto add = [&](const QString &path, const QString &name, const QString &icon) {
+        const auto p = QDir::cleanPath(Config::expand(path));
+        if (p.isEmpty() || seen.contains(p) || !QFileInfo(p).isDir())
+            return;
+        seen << p;
+        out.append(QVariantMap{{"name", name}, {"path", p}, {"icon", icon}});
+    };
+    add(QDir::homePath(), QStringLiteral("Pasta pessoal"), "user-home-symbolic");
+    const struct { QStandardPaths::StandardLocation loc; const char *icon; } xdg[] = {
+        {QStandardPaths::DesktopLocation, "user-desktop-symbolic"},
+        {QStandardPaths::DocumentsLocation, "folder-documents-symbolic"},
+        {QStandardPaths::DownloadLocation, "folder-download-symbolic"},
+        {QStandardPaths::PicturesLocation, "folder-pictures-symbolic"},
+        {QStandardPaths::MusicLocation, "folder-music-symbolic"},
+        {QStandardPaths::MoviesLocation, "folder-videos-symbolic"},
+    };
+    for (const auto &x : xdg) {
+        const auto p = QStandardPaths::writableLocation(x.loc);
+        if (p != QDir::homePath())
+            add(p, QFileInfo(p).fileName(), QString::fromLatin1(x.icon));
+    }
+    for (const auto &v : Config::load().value("favorites").toArray()) {
+        const auto o = v.toObject();
+        add(o.value("path").toString(), o.value("name").toString(), o.value("icon").toString("folder-symbolic"));
+    }
+    return out;
+}
+
+// Papel de parede: comando do config (wallpaperCommand, %f = arquivo) > shell quickshell com IPC
+// "wallpaper" > awww/swww > hyprpaper > swaybg > KDE > GNOME
+void FileOps::setWallpaper(const QString &path)
+{
+    const auto file = QFileInfo(path).absoluteFilePath();
+    const auto has = [](const char *p) { return !QStandardPaths::findExecutable(QString::fromLatin1(p)).isEmpty(); };
+    const auto running = [](const QString &name) {
+        QProcess p;
+        p.start("pgrep", {"-x", name});
+        return p.waitForFinished(1000) && p.exitCode() == 0;
+    };
+    const auto done = [this, file] { emit wallpaperSet(file); };
+
+    const auto custom = Config::load().value("wallpaperCommand").toString();
+    if (!custom.isEmpty()) {
+        auto args = QProcess::splitCommand(custom);
+        for (auto &a : args) a.replace("%f", file);
+        if (!args.isEmpty() && QProcess::startDetached(args.takeFirst(), args)) return done();
+    }
+    // quickshell (ex.: ghost, caelestia): "qs -p <config> ipc call wallpaper setWallpaper all <arquivo> fade"
+    {
+        QProcess p;
+        p.start("pgrep", {"-a", "quickshell"});
+        if (p.waitForFinished(1000)) {
+            for (const auto &line : QString::fromUtf8(p.readAllStandardOutput()).split('\n', Qt::SkipEmptyParts)) {
+                const auto parts = QProcess::splitCommand(line);
+                const auto i = parts.indexOf("-p");
+                const QStringList where = i > 0 && i + 1 < parts.size() ? QStringList{"-p", parts.at(i + 1)} : QStringList{};
+                QProcess ipc;
+                ipc.start("quickshell", where + QStringList{"ipc", "call", "wallpaper", "setWallpaper", "all", file, "fade"});
+                if (ipc.waitForFinished(3000) && ipc.exitCode() == 0) return done();
+            }
+        }
+    }
+    for (const char *tool : {"awww", "swww"})
+        if (has(tool) && running(QString::fromLatin1(tool) + "-daemon")
+            && QProcess::startDetached(QString::fromLatin1(tool), {"img", file}))
+            return done();
+    if (has("hyprctl") && running("hyprpaper")) {
+        QProcess::execute("hyprctl", {"hyprpaper", "preload", file});
+        if (QProcess::execute("hyprctl", {"hyprpaper", "wallpaper", "," + file}) == 0) return done();
+    }
+    if (has("swaybg")) {
+        QProcess::execute("pkill", {"-x", "swaybg"});
+        if (QProcess::startDetached("swaybg", {"-m", "fill", "-i", file})) return done();
+    }
+    if (has("plasma-apply-wallpaperimage") && QProcess::execute("plasma-apply-wallpaperimage", {file}) == 0) return done();
+    if (has("gsettings")) {
+        const auto uri = QUrl::fromLocalFile(file).toString();
+        QProcess::execute("gsettings", {"set", "org.gnome.desktop.background", "picture-uri", uri});
+        QProcess::execute("gsettings", {"set", "org.gnome.desktop.background", "picture-uri-dark", uri});
+        if (qEnvironmentVariable("XDG_CURRENT_DESKTOP").contains("GNOME", Qt::CaseInsensitive)) return done();
+    }
+    emit errorOccurred(QStringLiteral("Nenhum programa de papel de parede encontrado — defina \"wallpaperCommand\" no config.json"));
 }
 
 QVariantList FileOps::sshHosts() const
@@ -1429,4 +1833,122 @@ bool FileOps::toggleTag(const QStringList &paths, const QString &tag)
 QStringList FileOps::tagsOf(const QString &path) const
 {
     return Tags::read(path);
+}
+
+// ───────────────────────── ações em massa ─────────────────────────
+
+namespace {
+// "foto.png" -> "foto.webp"; se existir, "foto 2.webp"…
+QString freeOutput(const QString &src, const QString &suffix, const QString &tag = {})
+{
+    const QFileInfo fi(src);
+    const auto base = fi.completeBaseName() + tag;
+    auto out = fi.absolutePath() + "/" + base + "." + suffix;
+    for (int n = 2; QFileInfo::exists(out); ++n)
+        out = fi.absolutePath() + QStringLiteral("/%1 %2.%3").arg(base).arg(n).arg(suffix);
+    return out;
+}
+}
+
+bool FileOps::hasTool(const QString &name) const
+{
+    return !QStandardPaths::findExecutable(name).isEmpty();
+}
+
+// roda um processo por vez; no fim, um aviso com quantos deram certo
+void FileOps::runJobs(const QString &label, QList<ToolJob> jobs, int done, int failed)
+{
+    if (jobs.isEmpty()) {
+        setBusy(false);
+        if (failed == 0)
+            emit finished(QStringLiteral("%1: %2 %3").arg(label).arg(done).arg(done == 1 ? "arquivo" : "arquivos"));
+        else
+            emit errorOccurred(QStringLiteral("%1: %2 falharam, %3 ok").arg(label).arg(failed).arg(done));
+        return;
+    }
+    const auto job = jobs.takeFirst();
+    setBusy(true, label);
+    auto *proc = new QProcess(this);
+    proc->setProcessChannelMode(QProcess::MergedChannels);
+    connect(proc, &QProcess::finished, this, [=, this](int code, QProcess::ExitStatus st) {
+        proc->deleteLater();
+        const bool ok = st == QProcess::NormalExit && code == 0 && QFileInfo::exists(job.out);
+        if (ok)
+            pushUndo(UndoKind::Mkdir, {{QFileInfo(job.out).absolutePath(), job.out}});
+        else
+            QFile::remove(job.out);
+        runJobs(label, jobs, done + (ok ? 1 : 0), failed + (ok ? 0 : 1));
+    });
+    connect(proc, &QProcess::errorOccurred, this, [=, this](QProcess::ProcessError e) {
+        if (e != QProcess::FailedToStart)
+            return;
+        proc->deleteLater();
+        setBusy(false);
+        emit errorOccurred(QStringLiteral("“%1” não está instalado").arg(job.program));
+    });
+    proc->start(job.program, job.args);
+}
+
+void FileOps::convertImages(const QStringList &paths, const QString &format)
+{
+    QList<ToolJob> jobs;
+    for (const auto &p : paths) {
+        const auto out = freeOutput(p, format);
+        QStringList args{p};
+        if (format == "jpg")
+            args << "-background" << "white" << "-alpha" << "remove" << "-quality" << "90";
+        jobs << ToolJob{"magick", args << out, out};
+    }
+    runJobs(QStringLiteral("Convertido para .%1").arg(format), jobs);
+}
+
+void FileOps::resizeImages(const QStringList &paths, int percent)
+{
+    QList<ToolJob> jobs;
+    for (const auto &p : paths) {
+        const auto out = freeOutput(p, QFileInfo(p).suffix(), QStringLiteral(" (%1%)").arg(percent));
+        jobs << ToolJob{"magick", {p, "-resize", QString::number(percent) + "%", out}, out};
+    }
+    runJobs(QStringLiteral("Redimensionado"), jobs);
+}
+
+void FileOps::mergePdfs(const QStringList &paths)
+{
+    if (paths.size() < 2) {
+        emit errorOccurred(QStringLiteral("Selecione dois ou mais PDFs"));
+        return;
+    }
+    auto sorted = paths;
+    std::sort(sorted.begin(), sorted.end(), [](const QString &a, const QString &b) {
+        return QFileInfo(a).fileName().localeAwareCompare(QFileInfo(b).fileName()) < 0;
+    });
+    const auto out = freeOutput(QFileInfo(sorted.first()).absolutePath() + "/PDFs juntos.pdf", "pdf");
+    runJobs(QStringLiteral("PDFs juntados"), {ToolJob{"pdfunite", sorted << out, out}});
+}
+
+void FileOps::extractAudio(const QStringList &paths)
+{
+    QList<ToolJob> jobs;
+    for (const auto &p : paths) {
+        const auto out = freeOutput(p, "mp3");
+        jobs << ToolJob{"ffmpeg", {"-nostdin", "-loglevel", "error", "-i", p, "-vn", "-q:a", "2", out}, out};
+    }
+    runJobs(QStringLiteral("Áudio extraído"), jobs);
+}
+
+void FileOps::convertVideos(const QStringList &paths, const QString &format)
+{
+    QList<ToolJob> jobs;
+    for (const auto &p : paths) {
+        const auto out = freeOutput(p, format);
+        QStringList args{"-nostdin", "-loglevel", "error", "-i", p};
+        if (format == "gif")
+            args << "-vf" << "fps=12,scale=640:-1:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse";
+        else if (format == "webm")
+            args << "-c:v" << "libvpx-vp9" << "-crf" << "32" << "-b:v" << "0" << "-c:a" << "libopus";
+        else
+            args << "-c:v" << "libx264" << "-crf" << "23" << "-preset" << "medium" << "-c:a" << "aac";
+        jobs << ToolJob{"ffmpeg", args << out, out};
+    }
+    runJobs(QStringLiteral("Convertido para .%1").arg(format), jobs);
 }

@@ -41,6 +41,8 @@ Settings::Settings(QObject *parent) : QObject(parent)
     m_fileIcons = c.value("fileIcons").toString(m_fileIcons);
     m_previewPanel = c.value("previewPanel").toBool(m_previewPanel);
     m_singleWindow = c.value("singleWindow").toBool(m_singleWindow);
+    m_restoreSession = c.value("restoreSession").toBool(m_restoreSession);
+    m_folderColor = c.value("folderColor").toString();
     m_swipe = c.value("swipeNavigation").toBool(m_swipe);
     m_git = c.value("gitIntegration").toBool(m_git);
     m_swipeInvert = c.value("swipeInvert").toBool(m_swipeInvert);
@@ -69,6 +71,7 @@ Settings::Settings(QObject *parent) : QObject(parent)
     m_shortcuts = c.value("shortcuts").toObject().toVariantMap();
     if (c.contains("toolbar"))
         m_toolbar = c.value("toolbar").toVariant().toStringList();
+    m_appKinds = c.value("appKinds").toVariant().toStringList();
     if (!m_fontFamily.isEmpty())
         QGuiApplication::setFont(QFont(m_fontFamily));
 }
@@ -80,6 +83,17 @@ void Settings::setToolbar(const QStringList &v)
     m_toolbar = v;
     auto cfg = Config::load();
     cfg.insert("toolbar", QJsonArray::fromStringList(v));
+    Config::save(cfg);
+    emit changed();
+}
+
+void Settings::setAppKinds(const QStringList &v)
+{
+    if (v == m_appKinds)
+        return;
+    m_appKinds = v;
+    auto cfg = Config::load();
+    cfg.insert("appKinds", QJsonArray::fromStringList(v));
     Config::save(cfg);
     emit changed();
 }
@@ -187,6 +201,8 @@ void Settings::setIconTheme(const QString &v)
 void Settings::setFileIcons(const QString &v) { set(m_fileIcons, v, "fileIcons"); }
 void Settings::setPreviewPanel(bool v) { set(m_previewPanel, v, "previewPanel"); }
 void Settings::setSingleWindow(bool v) { set(m_singleWindow, v, "singleWindow"); }
+void Settings::setFolderColor(const QString &v) { if (v.isEmpty() || QColor::isValidColorName(v)) set(m_folderColor, v, "folderColor"); }
+void Settings::setRestoreSession(bool v) { set(m_restoreSession, v, "restoreSession"); }
 void Settings::setSwipeNavigation(bool v) { set(m_swipe, v, "swipeNavigation"); }
 void Settings::setGitIntegration(bool v) { set(m_git, v, "gitIntegration"); }
 void Settings::setSwipeInvert(bool v) { set(m_swipeInvert, v, "swipeInvert"); }

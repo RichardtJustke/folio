@@ -24,7 +24,9 @@ Item {
     signal requestEmptyTrash
     signal quickLook
     signal showProperties(var paths)
-    signal openWith(string path)
+    signal openWith(var paths)
+    signal transferTo(var paths, bool move)
+    signal flyInto(var items, real x, real y, var target)
     signal renameMany(var paths)
     signal promptSelectPattern
     signal openTerminalHere(string dir)

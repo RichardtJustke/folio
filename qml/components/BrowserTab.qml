@@ -22,7 +22,9 @@ Item {
     signal requestEmptyTrash
     signal quickLook
     signal showProperties(var paths)
-    signal openWith(string path)
+    signal openWith(var paths)
+    signal transferTo(var paths, bool move)
+    signal flyInto(var items, real x, real y, var target)
     signal renameMany(var paths)
     signal promptSelectPattern
 
@@ -111,7 +113,9 @@ Item {
         onNewFolder: root.newFolder()
         onNewFile: root.newFile()
         onShowProperties: paths => root.showProperties(paths)
-        onOpenWith: path => root.openWith(path)
+        onOpenWith: paths => root.openWith(paths)
+        onTransferTo: (paths, move) => root.transferTo(paths, move)
+        onFlyInto: (items, x, y, target) => root.flyInto(items, x, y, target)
         onRenameMany: paths => root.renameMany(paths)
         onPromptSelectPattern: root.promptSelectPattern()
         onOpenTerminalHere: dir => root.ops.openTerminal(dir)

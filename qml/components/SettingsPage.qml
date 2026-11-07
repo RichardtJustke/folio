@@ -509,6 +509,45 @@ Rectangle {
             }
             Line {
                 page: "appearance"
+                label: "Cor das pastas"
+                hint: Settings.folderColor === "" ? "Igual à cor de destaque" : Settings.folderColor
+                keywords: "pasta pastas folder cor ícone"
+                Row {
+                    spacing: 8
+                    Rectangle { // "auto": segue a cor de destaque
+                        width: 22; height: 22; radius: 11
+                        color: "transparent"
+                        border.width: Settings.folderColor === "" ? 2 : 1
+                        border.color: Settings.folderColor === "" ? Theme.text : Theme.borderStrong
+                        Text { anchors.centerIn: parent; text: "A"; color: Theme.accent; font.pixelSize: 11; font.weight: Font.Bold }
+                        MouseArea { anchors.fill: parent; onClicked: Settings.folderColor = "" }
+                    }
+                    Repeater {
+                        model: root.swatches.concat(["#ffd60a", "#ac8e68"])
+                        delegate: Rectangle {
+                            required property string modelData
+                            width: 22; height: 22; radius: 11
+                            color: modelData
+                            border.width: Settings.folderColor.toLowerCase() === modelData ? 2 : 0
+                            border.color: Theme.text
+                            MouseArea { anchors.fill: parent; onClicked: Settings.folderColor = parent.modelData }
+                        }
+                    }
+                    TextField {
+                        width: 84
+                        placeholderText: "#hex"
+                        placeholderTextColor: Theme.textFaint
+                        text: Settings.folderColor
+                        color: Theme.text
+                        font.pixelSize: 12
+                        selectionColor: Theme.accent
+                        background: Rectangle { radius: 8; color: Theme.pillBg; border.width: 1; border.color: parent.activeFocus ? Theme.accent : Theme.border }
+                        onEditingFinished: Settings.folderColor = text.trim()
+                    }
+                }
+            }
+            Line {
+                page: "appearance"
                 label: "Cor personalizada"
                 hint: "Hex, ex.: #ff7a59"
                 TextField {
@@ -731,6 +770,23 @@ Rectangle {
             }
             Line {
                 page: "behavior"
+                label: "Usar o Folio para abrir e salvar arquivos"
+                hint: "As janelas de “Abrir” e “Salvar como” dos navegadores e outros apps passam a ser do Folio (pelo xdg-desktop-portal). Reabra o app para valer"
+                keywords: "seletor portal salvar como abrir arquivo navegador file chooser"
+                Toggle {
+                    id: portalToggle
+                    on: root.ops.portalEnabled()
+                    onToggled: v => { root.ops.setPortalEnabled(v); portalToggle.on = root.ops.portalEnabled() }
+                }
+            }
+            Line {
+                page: "behavior"
+                label: "Reabrir abas da última sessão"
+                hint: "Desligado, o Folio sempre abre na página Início"
+                Toggle { on: Settings.restoreSession; onToggled: v => Settings.restoreSession = v }
+            }
+            Line {
+                page: "behavior"
                 label: "Integração com Git"
                 hint: "Em pastas de repositórios: branch no topo (trocar, criar, pull, push) e arquivos modificados marcados"
                 keywords: "git branch repositório commit push pull"
@@ -883,58 +939,96 @@ Rectangle {
 
             SectionTitle { page: "apps" }
             Repeater {
-                model: root.fileKinds
+                // tipos fixos + os que você adicionou (Settings.appKinds)
+                model: root.fileKinds.concat(Settings.appKinds.map(m => {
+                    const info = root.ops.mimeInfo(m)
+                    return { label: info.label || m, mime: m, extra: true }
+                }))
                 delegate: Line {
                     page: "apps"
                     id: kindLine
                     required property var modelData
                     label: modelData.label
-                    Rectangle {
-                        id: pick
-                        readonly property string current: root.appsRevision >= 0 ? root.ops.defaultAppName(kindLine.modelData.mime) : ""
-                        width: Math.min(220, Math.max(120, pickText.implicitWidth + 40)); height: 28; radius: 14
-                        color: pickArea.containsMouse ? Theme.hover : Theme.pillBg
-                        border.width: 1; border.color: Theme.border
-                        Text {
-                            id: pickText
-                            anchors { left: parent.left; leftMargin: 12; right: arrow.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
-                            text: pick.current || "Padrão do sistema"
-                            color: pick.current ? Theme.text : Theme.textDim
-                            font.pixelSize: 12
-                            elide: Text.ElideRight
-                        }
-                        Image {
-                            id: arrow
-                            anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
-                            width: 12; height: 12
-                            sourceSize: Qt.size(24, 24)
-                            source: Theme.icon("pan-down-symbolic,go-down-symbolic", Theme.textDim)
-                        }
-                        MouseArea { id: pickArea; anchors.fill: parent; hoverEnabled: true; onClicked: appMenu.popup() }
-
-                        GlassMenu {
-                            id: appMenu
-                            readonly property var apps: root.ops.appsForMime(kindLine.modelData.mime)
-                            GlassMenuItem {
-                                visible: appMenu.apps.length === 0
-                                enabled: false
-                                text: "Nenhum aplicativo disponível"
+                    hint: modelData.extra ? modelData.mime : ""
+                    Row {
+                        spacing: 6
+                        Rectangle {
+                            id: pick
+                            readonly property string current: root.appsRevision >= 0 ? root.ops.defaultAppName(kindLine.modelData.mime) : ""
+                            width: Math.min(220, Math.max(120, pickText.implicitWidth + 40)); height: 28; radius: 14
+                            color: pickArea.containsMouse ? Theme.hover : Theme.pillBg
+                            border.width: 1; border.color: Theme.border
+                            Text {
+                                id: pickText
+                                anchors { left: parent.left; leftMargin: 12; right: arrow.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
+                                text: pick.current || "Padrão do sistema"
+                                color: pick.current ? Theme.text : Theme.textDim
+                                font.pixelSize: 12
+                                elide: Text.ElideRight
                             }
-                            Repeater {
-                                model: appMenu.apps
-                                delegate: GlassMenuItem {
-                                    required property var modelData
-                                    text: modelData.name
-                                    onTriggered: {
-                                        if (root.ops.setDefaultApp(kindLine.modelData.mime, modelData.id))
-                                            root.appsRevision++
-                                    }
-                                }
+                            Image {
+                                id: arrow
+                                anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                                width: 12; height: 12
+                                sourceSize: Qt.size(24, 24)
+                                source: Theme.icon("pan-down-symbolic,go-down-symbolic", Theme.textDim)
+                            }
+                            MouseArea {
+                                id: pickArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                onClicked: appPicker.pick(kindLine.modelData.mime, kindLine.modelData.label, id => {
+                                    if (root.ops.setDefaultApp(kindLine.modelData.mime, id)) root.appsRevision++
+                                })
+                            }
+                        }
+                        Text {
+                            visible: kindLine.modelData.extra === true
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "×"
+                            color: removeKind.containsMouse ? Theme.text : Theme.textDim
+                            font.pixelSize: 16
+                            MouseArea {
+                                id: removeKind
+                                anchors.fill: parent
+                                anchors.margins: -6
+                                hoverEnabled: true
+                                onClicked: Settings.appKinds = Settings.appKinds.filter(m => m !== kindLine.modelData.mime)
                             }
                         }
                     }
                 }
             }
+            Line {
+                page: "apps"
+                label: "Adicionar tipo de arquivo"
+                hint: kindError || "Extensão (ex.: blend, kra, md) ou um arquivo"
+                property string kindError: ""
+                id: addKindLine
+                TextField {
+                    id: kindField
+                    width: 160
+                    placeholderText: "extensão"
+                    placeholderTextColor: Theme.textFaint
+                    color: Theme.text
+                    font.pixelSize: 12
+                    selectionColor: Theme.accent
+                    leftPadding: 10
+                    background: Rectangle { radius: 14; color: Theme.pillBg; border.width: 1; border.color: kindField.activeFocus ? Theme.accent : Theme.border }
+                    function add() {
+                        const info = root.ops.mimeInfo(text)
+                        if (!info.mime) { addKindLine.kindError = "Tipo não reconhecido: " + text; return }
+                        addKindLine.kindError = ""
+                        if (!root.fileKinds.some(k => k.mime === info.mime) && !Settings.appKinds.includes(info.mime))
+                            Settings.appKinds = Settings.appKinds.concat([info.mime])
+                        text = ""
+                    }
+                    Keys.onReturnPressed: add()
+                    Keys.onEnterPressed: add()
+                }
+            }
+
+            OpenWithDialog { id: appPicker; ops: root.ops }
 
             SectionTitle { page: "about" }
             PageItem {

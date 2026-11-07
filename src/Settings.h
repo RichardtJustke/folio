@@ -13,6 +13,7 @@ class Settings : public QObject
 
     Q_PROPERTY(QString theme READ theme WRITE setTheme NOTIFY changed)                       // dark | light | auto
     Q_PROPERTY(QString accent READ accent WRITE setAccent NOTIFY changed)                    // #rrggbb
+    Q_PROPERTY(QString folderColor READ folderColor WRITE setFolderColor NOTIFY changed)      // #rrggbb; "" = cor de destaque
     Q_PROPERTY(qreal backgroundOpacity READ backgroundOpacity WRITE setBackgroundOpacity NOTIFY changed)
     Q_PROPERTY(int cornerRadius READ cornerRadius WRITE setCornerRadius NOTIFY changed)
     Q_PROPERTY(int iconSize READ iconSize WRITE setIconSize NOTIFY changed)
@@ -29,7 +30,9 @@ class Settings : public QObject
     Q_PROPERTY(bool previewPanel READ previewPanel WRITE setPreviewPanel NOTIFY changed)
     // botões da barra de ferramentas, na ordem (ids em HeaderBar.qml)
     Q_PROPERTY(QStringList toolbar READ toolbar WRITE setToolbar NOTIFY changed)
+    Q_PROPERTY(QStringList appKinds READ appKinds WRITE setAppKinds NOTIFY changed) // tipos extras em Aplicativos padrão (mime)
     Q_PROPERTY(bool singleWindow READ singleWindow WRITE setSingleWindow NOTIFY changed)
+    Q_PROPERTY(bool restoreSession READ restoreSession WRITE setRestoreSession NOTIFY changed)
     Q_PROPERTY(bool swipeNavigation READ swipeNavigation WRITE setSwipeNavigation NOTIFY changed)
     Q_PROPERTY(bool gitIntegration READ gitIntegration WRITE setGitIntegration NOTIFY changed)
     Q_PROPERTY(bool swipeInvert READ swipeInvert WRITE setSwipeInvert NOTIFY changed)
@@ -67,6 +70,9 @@ public:
     QString fileIcons() const { return m_fileIcons; }
     bool previewPanel() const { return m_previewPanel; }
     bool singleWindow() const { return m_singleWindow; }
+    bool restoreSession() const { return m_restoreSession; }
+    QString folderColor() const { return m_folderColor; }
+    void setFolderColor(const QString &v);
     bool swipeNavigation() const { return m_swipe; }
     bool gitIntegration() const { return m_git; }
     void setGitIntegration(bool v);
@@ -84,6 +90,8 @@ public:
     QVariantMap shortcuts() const { return m_shortcuts; }
     QStringList toolbar() const { return m_toolbar; }
     void setToolbar(const QStringList &v);
+    QStringList appKinds() const { return m_appKinds; }
+    void setAppKinds(const QStringList &v);
     Q_INVOKABLE void resetToolbar();
     Q_INVOKABLE void setShortcut(const QString &action, const QStringList &keys);
     Q_INVOKABLE void resetShortcut(const QString &action);
@@ -109,6 +117,7 @@ public:
     void setFileIcons(const QString &v);
     void setPreviewPanel(bool v);
     void setSingleWindow(bool v);
+    void setRestoreSession(bool v);
     void setSwipeNavigation(bool v);
     void setSwipeInvert(bool v);
     void setLegibility(bool v);
@@ -148,6 +157,8 @@ private:
     QString m_fileIcons = QStringLiteral("duotone");
     bool m_previewPanel = false;
     bool m_singleWindow = false;
+    bool m_restoreSession = false;
+    QString m_folderColor;
     bool m_swipe = true;
     bool m_git = true;
     bool m_swipeInvert = false;
@@ -159,5 +170,6 @@ private:
     QVariantMap m_shortcuts;
     static QStringList defaultToolbar() { return {"view", "sort", "hidden", "newFolder", "preview"}; }
     QStringList m_toolbar = defaultToolbar();
+    QStringList m_appKinds;
     void saveShortcuts();
 };

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QMutex>
+#include <QFileInfo>
 #include <QObject>
 #include <QQmlEngine>
 #include <QStringList>
@@ -22,6 +23,7 @@ class FileOps : public QObject
     Q_PROPERTY(int etaSeconds READ etaSeconds NOTIFY speedChanged)
     Q_PROPERTY(QString busyLabel READ busyLabel NOTIFY busyChanged)
     Q_PROPERTY(bool canPaste READ canPaste NOTIFY canPasteChanged)
+    Q_PROPERTY(QStringList cutPaths READ cutPaths NOTIFY canPasteChanged) // recortados (Ctrl+X): aparecem esmaecidos
     Q_PROPERTY(bool canUndo READ canUndo NOTIFY undoChanged)
     Q_PROPERTY(QString undoLabel READ undoLabel NOTIFY undoChanged)
     Q_PROPERTY(QString trashDir READ trashDir CONSTANT)
@@ -54,6 +56,7 @@ public:
     int etaSeconds() const { return m_etaSeconds; }
     QString busyLabel() const { return m_busyLabel; }
     bool canPaste() const;
+    QStringList cutPaths() const { return m_cutPaths; }
     bool canUndo() const { return !m_undo.isEmpty(); }
     QString undoLabel() const;
     QString trashDir() const;
@@ -110,6 +113,28 @@ public:
     Q_INVOKABLE QString defaultAppName(const QString &mime) const;
     Q_INVOKABLE bool setDefaultApp(const QString &mime, const QString &appId);
     Q_INVOKABLE void openWith(const QString &path, const QString &appId);
+    Q_INVOKABLE void openWithMany(const QStringList &paths, const QString &appId);
+    Q_INVOKABLE QVariantList allApps() const;                 // todos os apps instalados [{name, id, icon}]
+    Q_INVOKABLE QString addCustomApp(const QString &name, const QString &command); // devolve o id do .desktop criado
+    Q_INVOKABLE void reloadApps();
+    Q_INVOKABLE QVariantMap mimeInfo(const QString &pathOrExt) const; // "pdf", ".pdf", "image/png" -> {mime, label, suffix}
+    Q_INVOKABLE bool canRun(const QString &path) const;      // programa, AppImage ou script
+    Q_INVOKABLE void run(const QString &path);
+    Q_INVOKABLE void openAsAdmin(const QString &path);
+    Q_INVOKABLE void setWallpaper(const QString &path);
+    Q_INVOKABLE QVariantList subdirs(const QString &dir, bool hidden = false) const; // [{name, path}] em ordem
+    Q_INVOKABLE QVariantList quickDirs() const;
+    // Folio como seletor de arquivos do sistema (xdg-desktop-portal FileChooser)
+    Q_INVOKABLE bool portalEnabled() const;
+    Q_INVOKABLE bool setPortalEnabled(bool on);
+    // ── ações em massa (magick, ffmpeg, pdfunite) ──
+    Q_INVOKABLE bool hasTool(const QString &name) const;
+    Q_INVOKABLE void convertImages(const QStringList &paths, const QString &format); // "png" | "jpg" | "webp"
+    Q_INVOKABLE void resizeImages(const QStringList &paths, int percent);
+    Q_INVOKABLE void mergePdfs(const QStringList &paths);
+    Q_INVOKABLE void extractAudio(const QStringList &paths);                          // vídeo -> .mp3
+    Q_INVOKABLE void convertVideos(const QStringList &paths, const QString &format);  // "mp4" | "webm" | "gif"
+    Q_INVOKABLE bool exists(const QString &path) const { return QFileInfo::exists(path); }                                       // pasta pessoal + pastas XDG + favoritos
     Q_INVOKABLE QVariantList sshHosts() const;               // Host do ~/.ssh/config
     Q_INVOKABLE void connectServer(const QString &target);   // [sftp://][user@]host[:porta][/caminho]
     Q_INVOKABLE bool hasNetworkMounts() const;
@@ -120,6 +145,7 @@ public:
     Q_INVOKABLE void computeSize(const QStringList &paths);
 
 signals:
+    void wallpaperSet(const QString &path);
     void busyChanged();
     void progressChanged();
     void speedChanged();
@@ -158,4 +184,8 @@ private:
     qint64 m_lastBytes = 0;
     bool m_busy = false;
     qreal m_progress = 0;
+    QStringList m_cutPaths;
+    void readCut();
+    struct ToolJob { QString program; QStringList args; QString out; };
+    void runJobs(const QString &label, QList<ToolJob> jobs, int done = 0, int failed = 0);
 };

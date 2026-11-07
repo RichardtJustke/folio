@@ -12,6 +12,7 @@ Rectangle {
     signal escaped
 
     readonly property bool active: field.activeFocus || field.text !== ""
+    readonly property bool typing: field.activeFocus // só desliga os atalhos enquanto o cursor está no campo
 
     function focusField() {
         open = true

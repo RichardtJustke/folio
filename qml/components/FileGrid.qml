@@ -41,7 +41,9 @@ Item {
     signal quickLook
     signal newFile
     signal showProperties(var paths)
-    signal openWith(string path)
+    signal openWith(var paths)
+    signal transferTo(var paths, bool move) // Copiar para… / Mover para…
+    signal flyInto(var items, real x, real y, var target) // itens soltos numa pasta da vista
     signal renameMany(var paths)
     signal promptSelectPattern
     signal openTerminalHere(string dir)
@@ -149,8 +151,33 @@ Item {
     }
     Component.onCompleted: prevPath = fileModel.path
 
-    function handleDrop(drop, dest) {
+    Timer {
+        id: unhide
+        property var tiles: [] // os próprios itens (a lista recicla delegates: o caminho pode mudar)
+        interval: 900
+        onTriggered: {
+            for (const t of tiles) if (t) t.opacity = 1
+            tiles = []
+        }
+    }
+
+    // target: o FileInteraction da pasta onde soltou (os itens voam até ela)
+    function handleDrop(drop, dest, target) {
         if (!drop.hasUrls) return
+        if (target && Theme.motion) {
+            const paths = drop.urls.map(u => decodeURIComponent(u.toString().replace(/^file:\/\//, "")))
+                                   .filter(p => p !== dest && liveTiles[p])
+            const items = ghostItems(paths)
+            if (items.length > 0) {
+                const c = target.mapToItem(null, target.width / 2, root.listMode ? target.height / 2 : Theme.iconSize / 2 + 12)
+                root.flyInto(items, c.x, c.y, target)
+                // o fantasma substitui o item; se foi cópia (o arquivo continua aqui), ele volta depois do voo
+                const hidden = []
+                for (const p of paths) if (liveTiles[p] && liveTiles[p].parent) { liveTiles[p].parent.opacity = 0; hidden.push(liveTiles[p].parent) }
+                unhide.tiles = unhide.tiles.concat(hidden)
+                unhide.restart()
+            }
+        }
         ops.dropUrls(drop.urls, dest)
         drop.accept(Qt.CopyAction) // a operação é feita aqui; a origem não deve apagar nada
     }
@@ -383,7 +410,9 @@ Item {
         onRequestEmptyTrash: root.requestEmptyTrash()
         onQuickLook: root.quickLook()
         onShowProperties: paths => root.showProperties(paths)
-        onOpenWith: path => root.openWith(path)
+        onOpenWith: paths => root.openWith(paths)
+        onTransferTo: (paths, move) => root.transferTo(paths, move)
+        onFlyInto: (items, x, y, target) => root.flyInto(items, x, y, target)
         onRenameMany: paths => root.renameMany(paths)
         onPromptSelectPattern: root.promptSelectPattern()
         onOpenTerminalHere: dir => root.openTerminalHere(dir)
@@ -425,9 +454,19 @@ Item {
             onTriggered: root.ops.extract(root.fileModel.path.section("::", 0, 0))
         }
         GlassMenuItem {
-            text: "Abrir com…"
-            visible: root.selection.length === 1 && !root.currentEntry.isDir && !root.fileModel.isTrash
-            onTriggered: root.openWith(root.selection[0])
+            text: "Abrir com"
+            visible: root.selection.length > 0 && !root.fileModel.isTrash && !root.fileModel.path.includes("::")
+            onTriggered: { openWithMenu.apps = root.ops.openWithApps(root.selection[0]); openWithMenu.popup() }
+        }
+        GlassMenuItem {
+            text: "Executar"
+            visible: root.selection.length === 1 && !root.fileModel.isTrash && root.ops.canRun(root.selection[0])
+            onTriggered: root.ops.run(root.selection[0])
+        }
+        GlassMenuItem {
+            text: "Abrir como Administrador"
+            visible: root.selection.length === 1 && !root.fileModel.isTrash && !root.fileModel.path.includes("::")
+            onTriggered: root.ops.openAsAdmin(root.selection[0])
         }
         GlassMenuItem {
             text: "Abrir Terminal Aqui"
@@ -471,6 +510,17 @@ Item {
             visible: !root.fileModel.isTrash && root.selection.length > 0
             onTriggered: Qt.openUrlExternally("mailto:?subject=Arquivos&body=" + root.selection.join("%0D%0A"))
         }
+        GlassMenuItem {
+            text: "Converter e Mais"
+            visible: root.selection.length > 0 && !root.fileModel.isTrash && !root.fileModel.path.includes("::") && mediaMenu.kinds(root.selection).any
+            onTriggered: mediaMenu.popup()
+        }
+        GlassMenuItem {
+            text: "Usar como Papel de Parede"
+            visible: root.selection.length === 1 && !root.fileModel.isTrash && /^image\//.test(root.currentEntry.mime || "")
+            onTriggered: root.ops.setWallpaper(root.selection[0])
+        }
+        Separator {}
         GlassMenuItem { text: "Copiar"; onTriggered: root.ops.copy(root.selection) }
         GlassMenuItem { text: "Recortar"; visible: !root.fileModel.isTrash; onTriggered: root.ops.cut(root.selection) }
         GlassMenuItem {
@@ -478,6 +528,16 @@ Item {
             visible: root.singleDir && !root.fileModel.isTrash
             enabled: root.ops.canPaste
             onTriggered: root.ops.paste(root.selection[0])
+        }
+        GlassMenuItem {
+            text: "Copiar para…"
+            visible: root.selection.length > 0
+            onTriggered: root.transferTo(root.selection, false)
+        }
+        GlassMenuItem {
+            text: "Mover para…"
+            visible: root.selection.length > 0 && !root.fileModel.isTrash && !root.fileModel.path.includes("::")
+            onTriggered: root.transferTo(root.selection, true)
         }
         Separator {}
         GlassMenuItem {
@@ -502,6 +562,7 @@ Item {
         }
         Separator {}
         GlassMenuItem { text: "Copiar Caminho"; onTriggered: root.ops.copyText(root.selection.join("\n")) }
+        GlassMenuItem { text: "Copiar Nome"; onTriggered: root.ops.copyText(root.selection.map(p => p.split("/").pop()).join("\n")) }
         GlassMenuItem { text: "Propriedades"; onTriggered: root.showProperties(root.selection) }
         Separator {}
         GlassMenuItem {
@@ -570,6 +631,59 @@ Item {
         GlassMenuItem { text: "Abrir Terminal Aqui"; shortcut: Theme.keyFor("terminal", "F4"); onTriggered: root.ops.openTerminal(root.fileModel.path) }
         GlassMenuItem { text: "Copiar Caminho da Pasta"; onTriggered: root.ops.copyText(root.fileModel.path) }
         GlassMenuItem { text: "Propriedades"; onTriggered: root.showProperties([root.fileModel.path]) }
+    }
+
+    // ações em massa pelo tipo da seleção (imagens, vídeos, PDFs)
+    GlassMenu {
+        id: mediaMenu
+        title: "Converter e Mais"
+        function kinds(paths) {
+            let img = 0, vid = 0, pdf = 0
+            for (const e of root.fileModel.selectedEntries(100000)) {
+                const m = e.mime || ""
+                if (m.startsWith("image/") && m !== "image/svg+xml") img++
+                else if (m.startsWith("video/")) vid++
+                else if (m === "application/pdf") pdf++
+            }
+            const n = paths.length
+            return { img: img === n, vid: vid === n, pdf: pdf === n && n > 1,
+                     any: (img === n && root.ops.hasTool("magick")) || (vid === n && root.ops.hasTool("ffmpeg"))
+                          || (pdf === n && n > 1 && root.ops.hasTool("pdfunite")) }
+        }
+        property var k: ({})
+        onAboutToShow: k = kinds(root.selection)
+        GlassMenuItem { visible: mediaMenu.k.img === true; text: "Converter para .png"; onTriggered: root.ops.convertImages(root.selection, "png") }
+        GlassMenuItem { visible: mediaMenu.k.img === true; text: "Converter para .jpg"; onTriggered: root.ops.convertImages(root.selection, "jpg") }
+        GlassMenuItem { visible: mediaMenu.k.img === true; text: "Converter para .webp"; onTriggered: root.ops.convertImages(root.selection, "webp") }
+        GlassMenuItem { visible: mediaMenu.k.img === true; text: "Reduzir para 50%"; onTriggered: root.ops.resizeImages(root.selection, 50) }
+        GlassMenuItem { visible: mediaMenu.k.img === true; text: "Reduzir para 25%"; onTriggered: root.ops.resizeImages(root.selection, 25) }
+        GlassMenuItem { visible: mediaMenu.k.vid === true; text: "Extrair Áudio (.mp3)"; onTriggered: root.ops.extractAudio(root.selection) }
+        GlassMenuItem { visible: mediaMenu.k.vid === true; text: "Converter para .mp4"; onTriggered: root.ops.convertVideos(root.selection, "mp4") }
+        GlassMenuItem { visible: mediaMenu.k.vid === true; text: "Converter para .webm"; onTriggered: root.ops.convertVideos(root.selection, "webm") }
+        GlassMenuItem { visible: mediaMenu.k.vid === true; text: "Criar GIF"; onTriggered: root.ops.convertVideos(root.selection, "gif") }
+        GlassMenuItem { visible: mediaMenu.k.pdf === true; text: "Juntar PDFs"; onTriggered: root.ops.mergePdfs(root.selection) }
+    }
+
+    // "Abrir com": apps do tipo do primeiro item selecionado; "Outro aplicativo…" abre o diálogo completo
+    GlassMenu {
+        id: openWithMenu
+        title: "Abrir com"
+        property var apps: []
+        GlassMenuItem {
+            visible: openWithMenu.apps.length === 0
+            enabled: false
+            text: "Nenhum aplicativo recomendado"
+        }
+        Repeater {
+            model: openWithMenu.apps
+            GlassMenuItem {
+                required property var modelData
+                text: modelData.name
+                onTriggered: root.ops.openWithMany(root.selection, modelData.id)
+            }
+        }
+        Separator {}
+        GlassMenuItem { text: "Outro aplicativo…"; onTriggered: root.openWith(root.selection) }
     }
 
     // templates de ~/Modelos: cria um documento novo a partir de um deles

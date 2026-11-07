@@ -228,7 +228,7 @@ Item {
                                 color: Theme.pillBg
                                 Rectangle {
                                     width: Math.max(height, parent.width * card.used); height: parent.height; radius: 3
-                                    color: card.used > 0.9 ? Theme.danger : Theme.accent
+                                    color: card.used > 0.9 ? Theme.danger : Theme.folderHex // segue a cor das pastas
                                 }
                             }
                             Text {

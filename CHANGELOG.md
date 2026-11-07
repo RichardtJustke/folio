@@ -2,6 +2,43 @@
 
 Cada mudança é uma nova versão (Alpha 0.N), registrada aqui e tagueada no git (`v0.N-alpha`).
 
+## Alpha 0.36
+- **Converter e Mais** no menu do botão direito (aparece conforme o que está selecionado):
+  - Imagens: converter para .png, .jpg ou .webp; reduzir para 50% ou 25% (usa o `magick`).
+  - Vídeos: extrair o áudio (.mp3), converter para .mp4 ou .webm, criar GIF (usa o `ffmpeg`).
+  - Dois ou mais PDFs: juntar num só, em ordem de nome (usa o `pdfunite`).
+- Os arquivos novos ficam ao lado dos originais, sem sobrescrever nada ("foto 2.webp"…), e Ctrl+Z os remove. Com vários arquivos, roda um por vez e avisa no fim quantos deram certo.
+
+## Alpha 0.35
+- **Seletor de arquivos do Folio** para os outros apps: o "Abrir", o "Salvar como" e o "Escolher pasta" de navegadores e outros programas abrem uma janela do Folio, com a mesma grade, miniaturas, atalhos de pastas e barra de caminho. É um backend do xdg-desktop-portal (`org.freedesktop.impl.portal.FileChooser`), rodando como `folio --portal`.
+  - Salvar: o campo de nome já vem com o nome sugerido pelo app (com a extensão fora da seleção); clicar num arquivo usa o nome dele; se o arquivo já existe, o Folio pede confirmação ("Substituir"). Tem botão de Nova pasta.
+  - Abrir: duplo clique ou Enter escolhe o arquivo (vários, se o app permitir). Os filtros do app ("Imagens", "Texto"…) aparecem num seletor no rodapé.
+  - Lembra a última pasta usada e o modo de visualização. Esc cancela.
+  - Ativar: Configurações → Comportamento → **"Usar o Folio para abrir e salvar arquivos"**. Não precisa de root: com o pacote instalado em `/usr` o `.portal` já vem junto; numa instalação em `~/.local` (ou AppImage), o Folio monta uma pasta de portais em `~/.local/share/folio/portals` e aponta o serviço para ela (drop-in do systemd de usuário). Desligar a opção desfaz tudo.
+  - Firefox: ligue `widget.use-xdg-desktop-portal.file-picker = 1` em `about:config`. Chrome e Chromium usam o portal sozinhos.
+  - A janela tem app_id `folio-picker`; `hypr/folio.lua` traz uma regra para ela flutuar no centro.
+- Teste do seletor sem D-Bus: `folio --pick open|save|dir`. Ligar/desligar pelo terminal: `folio --set-portal on|off`.
+- **Cor das pastas** (Configurações → Aparência): 10 cores ou qualquer hex; "A" segue a cor de destaque (padrão). A barra de uso dos Discos, no Início, acompanha.
+- Itens recortados (Ctrl+X) ficam esmaecidos até serem colados, inclusive os recortados no Nautilus ou em outro gerenciador.
+- `atualizar.sh`: compila, instala em `~/.local`, recarrega o D-Bus e reinicia o seletor.
+- Correção: Ctrl+C, Ctrl+X, Ctrl+V (e os outros atalhos) paravam de funcionar quando a busca tinha texto, mesmo com o foco nos arquivos. Agora só ficam desligados enquanto o cursor está no campo.
+- Correção: depois de arrastar arquivos, o item podia ficar esmaecido e o clique "preso", porque o arraste nativo não devolvia o soltar ao Folio. O estado agora é zerado quando o arraste termina.
+- Soltar arquivos numa pasta da vista: os itens voam até a pasta, e ela dá um pulinho (antes eles sumiam de uma vez). Numa cópia, o original volta a aparecer.
+
+## Alpha 0.34
+- Correção: ao reabrir, as abas voltavam para a pasta em que tinham sido abertas (quase sempre Downloads), e não para onde você estava. Agora o Folio salva a pasta atual de cada aba.
+- O Folio abre na página **Início**. Configurações → Comportamento → "Reabrir abas da última sessão" (desligado por padrão) volta a reabrir as abas onde você parou.
+- Menu do botão direito:
+  - **Abrir com**: os apps aparecem direto no menu e servem também para pastas e para vários arquivos de uma vez. "Outro aplicativo…" abre o diálogo completo.
+  - **Copiar para…** e **Mover para…**, com seletor de pasta (atalhos, subpastas, caminho digitado, Nova Pasta). O seletor lembra o último destino.
+  - **Executar** em programas, AppImages e scripts (os scripts rodam no terminal). Se faltar a permissão de execução, o Folio a adiciona.
+  - **Abrir como Administrador** (pkexec): uma pasta abre outra janela do Folio como root; um arquivo abre no app padrão.
+  - **Usar como Papel de Parede** em imagens: usa o shell quickshell (IPC `wallpaper`), awww/swww, hyprpaper, swaybg, KDE ou GNOME. Para usar outro programa, defina `wallpaperCommand` no `config.json`, com `%f` no lugar do arquivo.
+  - **Copiar Nome**.
+- "Abrir com…": tem busca, "Todos os aplicativos" (não só os que declaram o tipo do arquivo) e "Sempre abrir … com o escolhido".
+- **Programa personalizado…**: para AppImage, binário solto ou comando sem atalho no sistema. O Folio cria o atalho em `~/.local/share/applications` e o programa passa a aparecer em todas as listas.
+- Aplicativos padrão: qualquer app instalado (ou personalizado) pode ser escolhido. "Adicionar tipo de arquivo" aceita qualquer extensão (ex.: `blend`, `kra`, `md`).
+
 ## Alpha 0.33
 - Correção: em Discos, na página Início, um mesmo disco aparecia duas vezes ("Sistema" e "Pasta pessoal") quando `/` e `/home` eram subvolumes da mesma partição btrfs. Agora o Folio compara o dispositivo, e `/home` só ganha cartão próprio em partição separada.
 

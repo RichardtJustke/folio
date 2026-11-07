@@ -664,6 +664,8 @@ void FileModel::refilter()
             if (byTag ? e.tags.contains(tag, Qt::CaseInsensitive) : e.name.contains(m_query, Qt::CaseInsensitive))
                 m_entries.append(e);
     }
+    if (m_dirsOnly || !m_nameFilters.isEmpty())
+        m_entries.removeIf([this](const FileEntry &e) { return !passesFilters(e); });
     sortEntries(m_entries, m_sortKey, m_sortDesc, m_groupByDate);
 
     QSet<QString> alive;
@@ -690,6 +692,44 @@ void FileModel::refilter()
     emit entriesChanged();
     emit currentIndexChanged();
     bumpSelection();
+}
+
+bool FileModel::passesFilters(const FileEntry &e) const
+{
+    if (e.isDir)
+        return true;
+    if (m_dirsOnly)
+        return false;
+    if (m_nameFilters.isEmpty())
+        return true;
+    for (const auto &f : m_nameFilters) {
+        if (f.startsWith(QLatin1String("mime:"))) {
+            const auto m = f.mid(5);
+            if (m.endsWith("/*") ? e.mime.startsWith(m.chopped(1)) : (e.mime == m || QMimeDatabase().mimeTypeForName(e.mime).inherits(m)))
+                return true;
+        } else if (QRegularExpression::fromWildcard(f, Qt::CaseInsensitive).match(e.name).hasMatch()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void FileModel::setNameFilters(const QStringList &v)
+{
+    if (v == m_nameFilters)
+        return;
+    m_nameFilters = v;
+    emit filtersChanged();
+    refilter();
+}
+
+void FileModel::setDirsOnly(bool v)
+{
+    if (v == m_dirsOnly)
+        return;
+    m_dirsOnly = v;
+    emit filtersChanged();
+    refilter();
 }
 
 void FileModel::rebuildRows()
